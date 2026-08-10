@@ -1,0 +1,18 @@
+{
+  "schema": "ores.lib-core.dependencies/v1",
+  "dependencies": [
+    {
+      "package": "ores-otel/ores-interfaces",
+      "requirement": "^0.1.0",
+      "purpose": "canonical wire and domain types"
+    },
+    {
+      "package": "oresoftware/next-loggers",
+      "repository": "ores-otel/ores.otel.log",
+      "requirement": "^0.1.0",
+      "purpose": "structured logging and explicit OpenTelemetry adapters"
+    }
+  ],
+  "globalProviderInstallationAllowed": false,
+  "rawBiometricMaterialAllowed": false
+}
