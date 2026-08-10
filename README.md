@@ -22,5 +22,15 @@ Both are declared in `.zpkg.toml`; applications choose the native language targe
 
 ```sh
 zed add ores-otel/ores-lib-core@^0.1
+zed install
+```
+
+After `ores-interfaces`, `next-loggers`, and this package have registry-backed releases and
+the generated `.zpkg.lock` is committed, CI and deployments should use:
+
+```sh
 zed install --frozen
 ```
+
+The dependency graph is acyclic: `ores-interfaces` is foundational; `next-loggers` imports
+those contracts; `ores-lib-core` imports both contracts and the injectable logger package.
