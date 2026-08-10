@@ -1,0 +1,63 @@
+name: Polyglot core checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: python3 scripts/check_core.py
+
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [rust, go, typescript, python, dart, java, swift]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - if: matrix.language == 'dart'
+        uses: dart-lang/setup-dart@65eb853c7ba17dde3be364c3d2858773e7144260
+      - name: Test native target
+        env:
+          LANGUAGE: ${{ matrix.language }}
+        run: |
+          set -euo pipefail
+          root="languages/$LANGUAGE"
+          case "$LANGUAGE" in
+            rust) (cd "$root" && cargo test) ;;
+            go) (cd "$root" && go test ./...) ;;
+            typescript) (cd "$root" && npm test) ;;
+            python) (cd "$root" && PYTHONPATH=src python -m unittest discover -s tests -v) ;;
+            dart) (cd "$root" && dart pub get && dart analyze && dart run tool/check.dart) ;;
+            java)
+              mkdir -p "$RUNNER_TEMP/java"
+              if [ -f "$root/src/main/java/com/oresoftware/interfaces/AuthContracts.java" ]; then
+                javac -d "$RUNNER_TEMP/java" "$root/src/main/java/com/oresoftware/interfaces/AuthContracts.java" "$root/src/test/java/com/oresoftware/interfaces/AuthContractsTest.java"
+                java -ea -cp "$RUNNER_TEMP/java" com.oresoftware.interfaces.AuthContractsTest
+              else
+                javac -d "$RUNNER_TEMP/java" "$root/src/main/java/com/oresoftware/core/OresCore.java" "$root/src/test/java/com/oresoftware/core/OresCoreTest.java"
+                java -ea -cp "$RUNNER_TEMP/java" com.oresoftware.core.OresCoreTest
+              fi
+              ;;
+            swift) (cd "$root" && swift test) ;;
+            *) echo "unsupported language: $LANGUAGE" >&2; exit 64 ;;
+          esac
