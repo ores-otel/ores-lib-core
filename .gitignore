@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+target/
+__pycache__/
+*.pyc
+.dart_tool/
+build/
+.zed/
+zed_modules/
+.vendor/.zed/
