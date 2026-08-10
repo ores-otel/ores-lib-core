@@ -1,0 +1,5 @@
+name: ores_lib_core
+version: 0.1.0
+description: Security-oriented core helpers for OreSoftware Dart applications
+environment:
+  sdk: '>=3.3.0 <4.0.0'
