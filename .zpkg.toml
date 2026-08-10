@@ -19,7 +19,7 @@ dir = "zed_modules"
 [publish]
 include_readme = true
 tag_format = "v{version}"
-exclude = [".github/**", "**/target/**", "**/node_modules/**", "**/__pycache__/**", "**/.dart_tool/**", "**/build/**", "**/*.class"]
+exclude = [".github/**", "zed_modules/**", "**/target/**", "**/node_modules/**", "**/__pycache__/**", "**/.dart_tool/**", "**/build/**", "**/*.class"]
 smoke_test = "python3 scripts/check_core.py"
 
 [targets.rust]
