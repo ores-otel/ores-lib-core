@@ -1,0 +1,58 @@
+[package]
+org = "ores-otel"
+name = "ores-lib-core"
+version = "0.1.0"
+description = "Polyglot security, redaction, correlation, and logging adapters shared across OreSoftware"
+license = "MIT"
+
+[package.repository]
+vcs = "git"
+url = "https://github.com/ores-otel/ores-lib-core"
+
+[install]
+dir = "zed_modules"
+
+[dependencies]
+"ores-otel/ores-interfaces" = "^0.1.0"
+"oresoftware/next-loggers" = "^0.1.0"
+
+[publish]
+include_readme = true
+tag_format = "v{version}"
+exclude = [".github/**", "**/target/**", "**/node_modules/**", "**/__pycache__/**", "**/.dart_tool/**", "**/build/**", "**/*.class"]
+smoke_test = "python3 scripts/check_core.py"
+
+[targets.rust]
+dir = "languages/rust"
+name = "ores-lib-core-rust"
+adapter = "rust"
+
+[targets.typescript]
+dir = "languages/typescript"
+name = "ores-lib-core-typescript"
+adapter = "node"
+
+[targets.golang]
+dir = "languages/go"
+name = "ores-lib-core-go"
+adapter = "go"
+
+[targets.python]
+dir = "languages/python"
+name = "ores-lib-core-python"
+adapter = "python"
+
+[targets.dart]
+dir = "languages/dart"
+name = "ores-lib-core-dart"
+adapter = "dart"
+
+[targets.java]
+dir = "languages/java"
+name = "ores-lib-core-java"
+adapter = "java"
+
+[targets.swift]
+dir = "languages/swift"
+name = "ores-lib-core-swift"
+adapter = "none"
