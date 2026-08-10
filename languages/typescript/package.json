@@ -1,0 +1,9 @@
+{
+  "name": "@oresoftware/ores-lib-core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "scripts": {"test": "node --test test/*.test.js"},
+  "license": "MIT"
+}
