@@ -19,8 +19,14 @@ dir = "zed_modules"
 [publish]
 include_readme = true
 tag_format = "v{version}"
-exclude = [".github/**", "zed_modules/**", "**/target/**", "**/node_modules/**", "**/__pycache__/**", "**/.dart_tool/**", "**/build/**", "**/*.class"]
+exclude = [".github/**", ".zed/**", ".zpkg.lock", "zed_modules/**", "**/target/**", "**/node_modules/**", "**/__pycache__/**", "**/.dart_tool/**", "**/build/**", "**/*.class"]
 smoke_test = "python3 scripts/check_core.py"
+
+# Publish the aggregate identity consumed by services and product libraries.
+[targets.repository]
+dir = "."
+name = "ores-lib-core"
+adapter = "none"
 
 [targets.rust]
 dir = "languages/rust"
