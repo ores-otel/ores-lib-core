@@ -22,8 +22,13 @@ tag_format = "v{version}"
 exclude = [".github/**", ".zed/**", ".zpkg.lock", "zed_modules/**", "**/target/**", "**/node_modules/**", "**/__pycache__/**", "**/.dart_tool/**", "**/build/**", "**/*.class"]
 smoke_test = "python3 scripts/check_core.py"
 
-# The root [package] is the canonical ores-otel/ores-lib-core artifact.
-# These targets publish independently installable language slices.
+# With explicit targets, Zed publishes only those targets. The whole-repository
+# target retains the canonical package coordinate consumed by dependants.
+[targets.repository]
+dir = "."
+name = "ores-lib-core"
+adapter = "none"
+
 [targets.rust]
 dir = "languages/rust"
 name = "ores-lib-core-rust"
