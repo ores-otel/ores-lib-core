@@ -23,9 +23,11 @@ logging is provided by
 - Face/fingerprint verification is represented only as a platform-authenticator verdict;
   raw biometric data is not accepted, retained, or logged.
 - Normalized email exists in memory only; persistence uses HMAC-SHA-256 with a KMS pepper.
-- A repeated `(actor, idempotency key)` replays only an identical canonical request digest.
-- Cross-organization revocation processes only the current `sessions.revoke` grant
-  intersection and never identifies inaccessible organizations.
+- A repeated `(actor principal, idempotency-key HMAC)` replays only an identical canonical
+  request digest; raw idempotency keys are not persistence or audit material.
+- Organization-wide revocation requires an active `directory_admin` grant with the exact
+  `directory.revocations.execute` scope. Project-bounded grants are never elevated to whole-
+  organization authority, and inaccessible organizations are never identified.
 
 ## Shared Auth dashboard profile
 
@@ -41,6 +43,12 @@ authentication or product-authorization authority.
 safe sessions/factors, append-only audit events, and per-organization revocation operation.
 The migration forces RLS with no browser policies; deployment SQL grants a dedicated server
 role access only after the application has performed online authorization.
+
+The current revocation tables are a non-production persistence draft. They do not yet implement
+the canonical principal auth-epoch/not-before fence, opaque single-use commit authorization,
+keyed idempotency storage, or per-provider target state. The contract therefore sets
+`productionCapabilityEnabled: false`; deploying this migration must not enable the revocation
+route.
 
 ## Language layout
 

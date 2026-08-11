@@ -17,3 +17,18 @@ func TestIdempotency(t *testing.T) {
     a, b := [32]byte{}, [32]byte{}; for index := range a { a[index] = 1; b[index] = 2 }
     if ClassifyIdempotency(nil, a) != IdempotencyNew || ClassifyIdempotency(&a, a) != IdempotencyReplay || ClassifyIdempotency(&a, b) != IdempotencyConflict { t.Fatal("idempotency classification drifted") }
 }
+func TestDirectoryAuthorization(t *testing.T) {
+    grants := []DirectoryGrant{{
+        GrantID: "20000000-0000-4000-8000-000000000001",
+        OrganizationID: "10000000-0000-4000-8000-000000000001",
+        Scopes: []string{DirectoryRevocationsExecuteScope},
+        Roles: []string{DirectoryAdminRole},
+        GrantedAt: "2026-08-11T21:00:00Z",
+    }}
+    got := AuthorizedDirectoryOrganizations(nil, DirectoryRevocationsExecuteScope, grants)
+    if len(got) != 1 || got[0] != grants[0].OrganizationID { t.Fatal("exact directory grant rejected") }
+    if len(AuthorizedDirectoryOrganizations(nil, "directory.*", grants)) != 0 { t.Fatal("wildcard directory scope accepted") }
+    projectBounded := grants[0]
+    projectBounded.ProjectIDs = []string{"30000000-0000-4000-8000-000000000001"}
+    if len(AuthorizedDirectoryOrganizations(nil, DirectoryRevocationsExecuteScope, []DirectoryGrant{projectBounded})) != 0 { t.Fatal("project grant elevated to organization authority") }
+}

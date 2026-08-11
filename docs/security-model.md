@@ -11,5 +11,10 @@ short-lived, audience-bound credentials after online policy evaluation.
 For revocation-by-email, the core accepts only a strict ASCII canonical form, passes it to an
 injected HMAC-SHA-256 implementation backed by a KMS pepper, and requires the caller to discard
 the address immediately. An unkeyed hash is not sufficient. Authorization is an explicit
-intersection of requested organization IDs with current `sessions.revoke` grants. The result
-must never identify rejected/inaccessible organizations.
+intersection of requested organization IDs with active `DirectoryAdminGrant` values carrying
+`directory_admin` and the exact requested directory scope. Project-bounded grants must never
+become organization-wide authority. The result must never identify rejected or inaccessible
+organizations. Global revocation additionally requires the service-bound token exchange,
+opaque selection/commit-authorization handoffs, a central auth-epoch/not-before fence, and
+per-provider target state defined by `ores-interfaces`; the current SQL draft does not yet
+satisfy those requirements and remains disabled for production.

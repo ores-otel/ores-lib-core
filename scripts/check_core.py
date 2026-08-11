@@ -27,8 +27,8 @@ def validate_shared_auth_data_model() -> None:
     contract = json.loads(
         (ROOT / "contracts/shared-auth-data-model.json").read_text(encoding="utf-8")
     )
-    assert contract["wireContract"].endswith(
-        "ores-interfaces/contracts/shared-auth/v1/schema.json"
+    assert contract["wireContract"] == (
+        "ores-otel/ores-interfaces/contracts/shared-auth-admin/v1/schema.json"
     )
     assert contract["emailLookup"]["persistence"] == "hmac_sha256_only"
     assert contract["emailLookup"]["rawOrNormalizedEmailPersisted"] is False
@@ -43,11 +43,77 @@ def validate_shared_auth_data_model() -> None:
     ):
         assert storage[field] is False
     revocation = contract["revocation"]
-    assert revocation["authorizationPermission"] == "sessions.revoke"
-    assert revocation["authorizationGranularity"] == "per_organization"
+    assert revocation["authorizationPermission"] == "directory.revocations.execute"
+    assert revocation["authorizationGranularity"] == (
+        "directory_grant_organization_and_optional_projects"
+    )
     assert revocation["inaccessibleOrganizationIdentitiesDisclosed"] is False
-    assert revocation["idempotencyScope"] == ["actor_subject", "idempotency_key"]
+    assert revocation["idempotencyScope"] == [
+        "actor_principal_id",
+        "idempotency_key_hmac",
+    ]
     assert revocation["sameKeyDifferentRequest"] == "conflict"
+    assert revocation["centralFenceRequired"] is True
+    assert revocation["phishingResistantAal2StepUpRequired"] is True
+    assert revocation["commitAuthorizationSingleUseRequired"] is True
+    assert revocation["commitAuthorizationBoundFields"] == [
+        "preview_id",
+        "principal_id",
+        "selected_scopes",
+        "authorized_actor",
+        "verified_step_up",
+    ]
+    assert revocation["commitAuthorizationExpiryBound"] == (
+        "min(preview_expires_at,step_up_fresh_until)"
+    )
+    assert revocation["productionCapabilityEnabled"] is False
+    assert "auth-epoch fence" in revocation["disabledReason"]
+    assert "per-provider target state" in revocation["disabledReason"]
+    assert set(revocation["wireContracts"]) == {
+        "AdminRevocationTokenExchangeRequest",
+        "AdminRevocationTokenExchangeResult",
+        "PrincipalSearchRequest",
+        "PrincipalSearchResult",
+        "PrincipalSelectionRequest",
+        "PrincipalSelectionResult",
+        "GlobalRevocationPreviewRequest",
+        "GlobalRevocationPreview",
+        "GlobalRevocationCommitAuthorization",
+        "GlobalRevocationRequest",
+        "GlobalRevocationOperation",
+    }
+
+    exchange = contract["revocationTokenExchange"]
+    assert exchange["requestDiscriminator"] == "AdminRevocationTokenExchangeRequest"
+    assert exchange["resultDiscriminator"] == "AdminRevocationTokenExchangeResult"
+    assert exchange["audience"] == exchange["authorizedParty"] == (
+        "shared-auth-web-server"
+    )
+    assert exchange["scope"] == "shared-auth:sessions:revoke:global"
+    assert exchange["subjectTokenWriteOnly"] is True
+    assert exchange["accessTokenWriteOnly"] is True
+    assert exchange["maximumLifetimeSeconds"] == 300
+    assert exchange["tokensLogged"] is False
+    assert exchange["tokensPersisted"] is False
+
+    directory = contract["directoryAdministration"]
+    assert directory["wireDiscriminator"] == "DirectoryAdminGrantSet"
+    assert directory["wireSchema"] == (
+        "ores.shared-auth-admin-directory-grant-set/v1"
+    )
+    assert directory["requiredRole"] == "directory_admin"
+    assert directory["scopeValues"] == [
+        "directory.dashboard.read",
+        "directory.users.read",
+        "directory.sessions.read",
+        "directory.roles.read",
+        "directory.revocations.read",
+        "directory.revocations.execute",
+    ]
+    assert directory["grantSetExpiresAtRequired"] is True
+    assert directory["exactOrganizationMatchRequired"] is True
+    assert directory["crossOrganizationFallbackAllowed"] is False
+    assert directory["rawEmailsAllowed"] is False
 
     sql_path = ROOT / contract["postgresMigration"]
     sql = sql_path.read_text(encoding="utf-8")
@@ -61,6 +127,9 @@ def validate_shared_auth_data_model() -> None:
     assert "authorization_verified boolean NOT NULL CHECK (authorization_verified)" in sql
     assert "authorization_policy = 'per_organization_sessions.revoke'" in sql
     assert "CHECK (NOT dry_run OR sessions_revoked = 0)" in sql
+    assert "role_key NOT IN ('directory_admin', 'directory_security_operator', 'directory_auditor')" in sql
+    assert "'directory.revocations.execute'" in sql
+    assert "array_position(permissions, 'directory.*') IS NULL" in sql
     assert "normalized_email " not in sql.lower()
     factor_table = re.search(
         r"CREATE TABLE IF NOT EXISTS ores_shared_auth\.factor \((.*?)\n\);",
@@ -89,6 +158,9 @@ def validate_shared_auth_data_model() -> None:
             ("typescript", "src/index.js"),
             ("go", "core.go"),
             ("dart", "lib/ores_lib_core.dart"),
+            ("python", "src/ores_lib_core/__init__.py"),
+            ("java", "src/main/java/com/oresoftware/core/OresCore.java"),
+            ("swift", "Sources/OresLibCore/OresLibCore.swift"),
         )
     )
     for symbol in (
@@ -103,6 +175,38 @@ def validate_shared_auth_data_model() -> None:
         "ClassifyIdempotency",
     ):
         assert symbol in sources, f"missing polyglot core symbol {symbol}"
+    for symbol in (
+        "DirectoryAdminGrant",
+        "DirectoryGrant",
+        "authorized_directory_organizations",
+        "authorizedDirectoryOrganizations",
+        "AuthorizedDirectoryOrganizations",
+        "directory_admin",
+        "directory.revocations.execute",
+    ):
+        assert symbol in sources, f"missing directory-grant core symbol {symbol}"
+
+    boundary_guards = {
+        "rust": "grant.project_ids.is_none()",
+        "typescript": "grant.projectIds === undefined",
+        "go": "grant.ProjectIDs != nil",
+        "dart": "grant.projectIds == null",
+        "python": "grant.project_ids is None",
+        "java": "grant.projectIds() == null",
+        "swift": "$0.projectIds == nil",
+    }
+    for language, guard in boundary_guards.items():
+        source_path = {
+            "rust": "src/lib.rs",
+            "typescript": "src/index.js",
+            "go": "core.go",
+            "dart": "lib/ores_lib_core.dart",
+            "python": "src/ores_lib_core/__init__.py",
+            "java": "src/main/java/com/oresoftware/core/OresCore.java",
+            "swift": "Sources/OresLibCore/OresLibCore.swift",
+        }[language]
+        source = (ROOT / "languages" / language / source_path).read_text(encoding="utf-8")
+        assert guard in source, f"{language} elevates project-bound directory grants"
 
 
 def validate_dashboard_runtime() -> None:
@@ -160,6 +264,14 @@ def main() -> int:
     assert '"oresoftware/next-loggers" = "^0.1.0"' in zpkg
     assert '[targets.postgres]' in zpkg
     assert 'dir = "database/postgres"' in zpkg
+
+    rust_lock = ROOT / "languages/rust/Cargo.lock"
+    assert rust_lock.is_file(), "Rust lockfile is required for locked verification"
+    assert 'name = "ores-lib-core"' in rust_lock.read_text(encoding="utf-8")
+
+    data_model_doc = (ROOT / "docs/shared-auth-data-model.md").read_text(encoding="utf-8")
+    assert "contracts/shared-auth-admin/v1/schema.json" in data_model_doc
+    assert "production capability" in data_model_doc
 
     validate_dashboard_runtime()
     validate_shared_auth_data_model()

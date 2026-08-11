@@ -165,6 +165,76 @@ type RevocationGrant struct {
 	SessionsRevoke bool
 }
 
+const DirectoryAdminRole = "directory_admin"
+const DirectoryRevocationsExecuteScope = "directory.revocations.execute"
+
+type DirectoryGrant struct {
+	GrantID string
+	OrganizationID string
+	ProjectIDs []string
+	Scopes []string
+	Roles []string
+	GrantedAt string
+	ExpiresAt string
+}
+
+func (grant DirectoryGrant) Allows(requiredScope string) bool {
+	if strings.Contains(requiredScope, "*") {
+		return false
+	}
+	hasRole := false
+	for _, role := range grant.Roles {
+		if role == DirectoryAdminRole {
+			hasRole = true
+			break
+		}
+	}
+	if !hasRole {
+		return false
+	}
+	for _, scope := range grant.Scopes {
+		if scope == requiredScope {
+			return true
+		}
+	}
+	return false
+}
+
+func AuthorizedDirectoryOrganizations(
+	requested []string,
+	requiredScope string,
+	grants []DirectoryGrant,
+) []string {
+	var requestedSet map[string]struct{}
+	if requested != nil {
+		requestedSet = make(map[string]struct{}, len(requested))
+		for _, id := range requested {
+			requestedSet[id] = struct{}{}
+		}
+	}
+	authorizedSet := map[string]struct{}{}
+	for _, grant := range grants {
+		if !grant.Allows(requiredScope) {
+			continue
+		}
+		if grant.ProjectIDs != nil {
+			continue
+		}
+		if requestedSet != nil {
+			if _, ok := requestedSet[grant.OrganizationID]; !ok {
+				continue
+			}
+		}
+		authorizedSet[grant.OrganizationID] = struct{}{}
+	}
+	authorized := make([]string, 0, len(authorizedSet))
+	for id := range authorizedSet {
+		authorized = append(authorized, id)
+	}
+	sort.Strings(authorized)
+	return authorized
+}
+
 // AuthorizedOrganizations returns only the sorted authorized intersection.
 func AuthorizedOrganizations(requested []string, grants []RevocationGrant) []string {
 	var requestedSet map[string]struct{}

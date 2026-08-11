@@ -65,6 +65,21 @@ CREATE TABLE IF NOT EXISTS ores_shared_auth.role (
     permissions text[] NOT NULL DEFAULT '{}'::text[] CHECK (cardinality(permissions) <= 256),
     created_at timestamptz NOT NULL DEFAULT statement_timestamp(),
     updated_at timestamptz NOT NULL DEFAULT statement_timestamp(),
+    CHECK (
+        role_key NOT IN ('directory_admin', 'directory_security_operator', 'directory_auditor')
+        OR (
+            cardinality(permissions) BETWEEN 1 AND 6
+            AND permissions <@ ARRAY[
+                'directory.dashboard.read',
+                'directory.users.read',
+                'directory.sessions.read',
+                'directory.roles.read',
+                'directory.revocations.read',
+                'directory.revocations.execute'
+            ]::text[]
+            AND array_position(permissions, 'directory.*') IS NULL
+        )
+    ),
     UNIQUE (organization_id, role_key),
     UNIQUE (id, organization_id)
 );

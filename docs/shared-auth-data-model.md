@@ -1,6 +1,6 @@
 # Shared Auth data model and revocation protocol
 
-The canonical wire schema lives in `ores-interfaces/contracts/shared-auth/v1/schema.json`;
+The canonical wire schema lives in `ores-interfaces/contracts/shared-auth-admin/v1/schema.json`;
 `database/postgres/shared_auth_v1.sql` is its PostgreSQL 15+/Supabase persistence profile.
 The schema is organization-first: projects belong to one organization, memberships join a
 global identity to one organization, and composite foreign keys prevent role bindings,
@@ -23,30 +23,38 @@ images, or biometric templates. `platform_biometric` records only that the exter
 authenticator performed user verification. Sessions similarly store a keyed audit digest, not
 a bearer token, refresh token, cookie, or raw provider session ID.
 
-## Revoke sessions by normalized email
+## Canonical global-revocation boundary
 
-1. Online-introspect the administrator credential for the exact Shared Auth audience. Actor
-   identity is taken from that verified context, never from the command body.
-2. Parse and normalize the email with `normalize_email_for_revocation`. Reject non-ASCII input,
-   ambiguous dots, invalid domain labels, or an already-noncanonical wire value.
-3. Build a canonical request digest, including the email lookup HMAC—not the email—the sorted
-   scope, reason, and `dryRun` flag.
-4. Insert `revocation_operation` under `(actor_subject, idempotency_key)`. On uniqueness conflict,
-   constant-time compare `request_digest`: replay the sanitized result if equal; return
-   `IDEMPOTENCY_KEY_REUSED` if different.
-5. Compute the intersection between requested organizations and current `sessions.revoke`
-   grants. Never use a product JWT role claim as the authority. Do not return inaccessible
-   organization IDs; only return the aggregate `unprocessedOrganizationCount`.
-6. In a separate transaction for each authorized organization, lock matching active sessions,
-   revoke them at the upstream identity provider, update local state, append `audit_event`, and
-   insert one `revocation_organization_result` with `authorization_verified = true`.
-7. Mark the operation `completed`, `partial`, `denied`, or `no_match`, then emit the same
-   sanitized event through an injected `ores.otel.log` sink. Never use email, session IDs, or
-   user IDs as OpenTelemetry attribute keys or metric labels.
+1. Online-introspect the administrator credential for the exact audience, AAL2+, current
+   session/epoch, and an active `DirectoryAdminGrantSet`. Product JWT role claims are not
+   authority.
+2. Require an organization-wide `directory_admin` grant with exact
+   `directory.revocations.execute` scope. A grant carrying `projectIds` can authorize only those
+   projects and must never be promoted to organization authority.
+3. Exchange the administrator token through the service-authenticated, exact-audience
+   `AdminRevocationTokenExchangeRequest/Result` boundary. Subject/access tokens are write-only,
+   short-lived, and never logged or persisted.
+4. Convert the transient email to the KMS-HMAC lookup key, resolve ambiguity through the opaque
+   selection handoff, and preview exact scopes plus honest complete/partial/unavailable inventory.
+5. Issue an opaque, single-use commit authorization only after fresh phishing-resistant WebAuthn.
+   Bind it to preview, principal, exact scopes, actor, and freshness/dual-control state.
+6. Atomically consume that handle, store only a keyed idempotency digest, and commit the principal
+   auth-epoch/not-before fence before any provider fan-out. Persist per-provider target state and
+   an honest partial outcome.
+7. Append redacted audit correlation and emit the same sanitized event through an injected
+   `ores.otel.log` sink. Never use email, raw session IDs, bearer material, or user IDs as
+   OpenTelemetry attribute keys or metric labels.
 
-Authorization is re-evaluated on a retry before any new organization transaction. A completed
-same-digest operation replays its stored counts and authorized organization results without
-performing revocation again.
+Authorization is re-evaluated on a retry before any new transaction. A completed same-digest
+operation replays its stored result without performing revocation again.
+
+### Persistence readiness
+
+`database/postgres/shared_auth_v1.sql` still contains the earlier per-organization draft: it
+stores a raw idempotency key, uses `per_organization_sessions.revoke`, and has no principal
+auth-epoch fence or per-provider target table. It is retained for review/migration development,
+but `contracts/shared-auth-data-model.json` explicitly disables the production capability until
+those gaps are replaced and a disposable PostgreSQL/Supabase migration test passes.
 
 ## Database access
 

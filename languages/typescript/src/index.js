@@ -25,6 +25,20 @@ export function authorizedOrganizations(requested, grants) {
   return [...new Set(grants.filter((grant) => grant.sessionsRevoke && (requestedSet === undefined || requestedSet.has(grant.organizationId))).map((grant) => grant.organizationId))].sort();
 }
 
+export const DIRECTORY_ADMIN_ROLE = "directory_admin";
+export const DIRECTORY_REVOCATIONS_EXECUTE_SCOPE = "directory.revocations.execute";
+
+export function authorizedDirectoryOrganizations(requested, requiredScope, grants) {
+  if (typeof requiredScope !== "string" || requiredScope.includes("*")) return [];
+  const requestedSet = requested === undefined ? undefined : new Set(requested);
+  return [...new Set(grants
+    .filter((grant) => Array.isArray(grant.roles) && grant.roles.includes(DIRECTORY_ADMIN_ROLE))
+    .filter((grant) => Array.isArray(grant.scopes) && grant.scopes.includes(requiredScope))
+    .filter((grant) => grant.projectIds === undefined)
+    .filter((grant) => requestedSet === undefined || requestedSet.has(grant.organizationId))
+    .map((grant) => grant.organizationId))].sort();
+}
+
 export function classifyIdempotency(existingRequestDigest, incomingRequestDigest) {
   if (!(incomingRequestDigest instanceof Uint8Array) || incomingRequestDigest.length !== 32) throw new TypeError("incoming digest must be a 32-byte Uint8Array");
   if (existingRequestDigest === undefined) return "new";

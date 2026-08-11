@@ -1,6 +1,6 @@
 {
   "schema": "ores.lib-core.shared-auth-data-model/v1",
-  "wireContract": "ores-otel/ores-interfaces/contracts/shared-auth/v1/schema.json",
+  "wireContract": "ores-otel/ores-interfaces/contracts/shared-auth-admin/v1/schema.json",
   "postgresMigration": "database/postgres/shared_auth_v1.sql",
   "entities": [
     "organization",
@@ -32,13 +32,54 @@
     "publicFingerprintAllowed": true
   },
   "revocation": {
-    "authorizationPermission": "sessions.revoke",
-    "authorizationGranularity": "per_organization",
+    "authorizationPermission": "directory.revocations.execute",
+    "authorizationGranularity": "directory_grant_organization_and_optional_projects",
     "inaccessibleOrganizationIdentitiesDisclosed": false,
-    "idempotencyScope": ["actor_subject", "idempotency_key"],
+    "idempotencyScope": [
+      "actor_principal_id",
+      "idempotency_key_hmac"
+    ],
     "sameKeyDifferentRequest": "conflict",
     "transactionBoundary": "one_authorized_organization",
-    "auditRequired": true
+    "auditRequired": true,
+    "wireContracts": [
+      "AdminRevocationTokenExchangeRequest",
+      "AdminRevocationTokenExchangeResult",
+      "PrincipalSearchRequest",
+      "PrincipalSearchResult",
+      "PrincipalSelectionRequest",
+      "PrincipalSelectionResult",
+      "GlobalRevocationPreviewRequest",
+      "GlobalRevocationPreview",
+      "GlobalRevocationCommitAuthorization",
+      "GlobalRevocationRequest",
+      "GlobalRevocationOperation"
+    ],
+    "centralFenceRequired": true,
+    "phishingResistantAal2StepUpRequired": true,
+    "commitAuthorizationSingleUseRequired": true,
+    "commitAuthorizationBoundFields": [
+      "preview_id",
+      "principal_id",
+      "selected_scopes",
+      "authorized_actor",
+      "verified_step_up"
+    ],
+    "commitAuthorizationExpiryBound": "min(preview_expires_at,step_up_fresh_until)",
+    "productionCapabilityEnabled": false,
+    "disabledReason": "Persistence draft does not yet implement the principal auth-epoch fence and per-provider target state required by the canonical wire contract."
+  },
+  "revocationTokenExchange": {
+    "requestDiscriminator": "AdminRevocationTokenExchangeRequest",
+    "resultDiscriminator": "AdminRevocationTokenExchangeResult",
+    "audience": "shared-auth-web-server",
+    "authorizedParty": "shared-auth-web-server",
+    "scope": "shared-auth:sessions:revoke:global",
+    "subjectTokenWriteOnly": true,
+    "accessTokenWriteOnly": true,
+    "maximumLifetimeSeconds": 300,
+    "tokensLogged": false,
+    "tokensPersisted": false
   },
   "databaseAccess": {
     "browserAccessAllowed": false,
@@ -46,5 +87,27 @@
     "policiesInstalled": false,
     "serverRoleRequiresBypassRls": true,
     "deploymentSpecificLeastPrivilegeGrantRequired": true
+  },
+  "directoryAdministration": {
+    "wireDiscriminator": "DirectoryAdminGrantSet",
+    "wireSchema": "ores.shared-auth-admin-directory-grant-set/v1",
+    "grantDefinition": "DirectoryAdminGrant",
+    "grantIdSource": "role_binding.id",
+    "organizationIdentifier": "uuid",
+    "optionalProjectIdentifiers": "uuid_array_non_empty_when_present",
+    "requiredRole": "directory_admin",
+    "scopeValues": [
+      "directory.dashboard.read",
+      "directory.users.read",
+      "directory.sessions.read",
+      "directory.roles.read",
+      "directory.revocations.read",
+      "directory.revocations.execute"
+    ],
+    "grantSetExpiresAtRequired": true,
+    "grantSetExpiresAtSource": "introspected_token_or_session",
+    "exactOrganizationMatchRequired": true,
+    "crossOrganizationFallbackAllowed": false,
+    "rawEmailsAllowed": false
   }
 }
