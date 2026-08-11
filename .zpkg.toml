@@ -13,8 +13,8 @@ url = "https://github.com/ores-otel/ores-lib-core"
 dir = "zed_modules"
 
 [dependencies]
-"ores-otel/ores-interfaces" = "^0.1.0"
-"oresoftware/next-loggers" = "^0.1.0"
+"ores-otel/ores-interfaces-repository" = "^0.1.0"
+"oresoftware/next-loggers-repository" = "^0.1.0"
 
 [publish]
 include_readme = true
@@ -22,11 +22,11 @@ tag_format = "v{version}"
 exclude = [".github/**", ".zed/**", ".zpkg.lock", "zed_modules/**", "**/target/**", "**/node_modules/**", "**/__pycache__/**", "**/.dart_tool/**", "**/build/**", "**/*.class"]
 smoke_test = "python3 scripts/check_core.py"
 
-# With explicit targets, Zed publishes only those targets. The whole-repository
-# target retains the canonical package coordinate consumed by dependants.
+# Zed v0.1.0 publishes this aggregate as
+# ores-otel/ores-lib-core-repository. Whole-repository dependants use that
+# coordinate while native consumers may select a language-specific target.
 [targets.repository]
 dir = "."
-name = "ores-lib-core"
 adapter = "none"
 
 [targets.rust]
