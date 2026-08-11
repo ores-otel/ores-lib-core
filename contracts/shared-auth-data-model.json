@@ -1,0 +1,50 @@
+{
+  "schema": "ores.lib-core.shared-auth-data-model/v1",
+  "wireContract": "ores-otel/ores-interfaces/contracts/shared-auth/v1/schema.json",
+  "postgresMigration": "database/postgres/shared_auth_v1.sql",
+  "entities": [
+    "organization",
+    "project",
+    "user_account",
+    "membership",
+    "role",
+    "role_binding",
+    "session",
+    "factor",
+    "audit_event",
+    "revocation_operation",
+    "revocation_organization_result"
+  ],
+  "emailLookup": {
+    "canonicalInput": "ascii_lowercase_email",
+    "persistence": "hmac_sha256_only",
+    "pepperAuthority": "kms",
+    "rawOrNormalizedEmailPersisted": false,
+    "rawOrNormalizedEmailLogged": false
+  },
+  "credentialStorage": {
+    "privateKeysAllowed": false,
+    "rawBiometricMaterialAllowed": false,
+    "biometricTemplatesAllowed": false,
+    "bearerTokensAllowed": false,
+    "refreshTokensAllowed": false,
+    "externalReferenceHmacAllowed": true,
+    "publicFingerprintAllowed": true
+  },
+  "revocation": {
+    "authorizationPermission": "sessions.revoke",
+    "authorizationGranularity": "per_organization",
+    "inaccessibleOrganizationIdentitiesDisclosed": false,
+    "idempotencyScope": ["actor_subject", "idempotency_key"],
+    "sameKeyDifferentRequest": "conflict",
+    "transactionBoundary": "one_authorized_organization",
+    "auditRequired": true
+  },
+  "databaseAccess": {
+    "browserAccessAllowed": false,
+    "rowLevelSecurityForced": true,
+    "policiesInstalled": false,
+    "serverRoleRequiresBypassRls": true,
+    "deploymentSpecificLeastPrivilegeGrantRequired": true
+  }
+}

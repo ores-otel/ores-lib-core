@@ -4,7 +4,9 @@ Small, security-oriented building blocks shared across OreSoftware services and 
 
 This repository intentionally avoids product policy and global runtime mutation. It supplies
 redaction, correlation-ID validation, secret wrappers, bounded pagination primitives, and
-injectable security-log sinks. Canonical wire types live in
+injectable security-log sinks. It also supplies the canonical PostgreSQL/Supabase persistence
+profile and portable helpers for Shared Auth's authorized, idempotent email-based session
+revocation. Canonical wire types live in
 [`ores-otel/ores-interfaces`](https://github.com/ores-otel/ores-interfaces), and structured
 logging is provided by
 [`ores-otel/ores.otel.log`](https://github.com/ores-otel/ores.otel.log). Both are declared in
@@ -20,6 +22,10 @@ logging is provided by
 - The core library never installs a global logger or OpenTelemetry provider.
 - Face/fingerprint verification is represented only as a platform-authenticator verdict;
   raw biometric data is not accepted, retained, or logged.
+- Normalized email exists in memory only; persistence uses HMAC-SHA-256 with a KMS pepper.
+- A repeated `(actor, idempotency key)` replays only an identical canonical request digest.
+- Cross-organization revocation processes only the current `sessions.revoke` grant
+  intersection and never identifies inaccessible organizations.
 
 ## Shared Auth dashboard profile
 
@@ -29,6 +35,12 @@ administrative server: online introspection, exact audience and organization mem
 no cross-organization fallback, bounded cursor pagination, redacted telemetry, and truthful
 capability advertising. The dashboard is a read-only projection and never becomes a second
 authentication or product-authorization authority.
+
+`database/postgres/shared_auth_v1.sql`, `contracts/shared-auth-data-model.json`, and
+`docs/shared-auth-data-model.md` define the organizations/projects/users/memberships/roles,
+safe sessions/factors, append-only audit events, and per-organization revocation operation.
+The migration forces RLS with no browser policies; deployment SQL grants a dedicated server
+role access only after the application has performed online authorization.
 
 ## Language layout
 
@@ -50,5 +62,7 @@ the generated `.zpkg.lock` is committed, CI and deployments should use:
 zed install --frozen
 ```
 
-The dependency graph is acyclic: `ores-interfaces` is foundational; `next-loggers` imports
-those contracts; `ores-lib-core` imports both contracts and the injectable logger package.
+The dependency graph is acyclic: `ores-interfaces` is foundational and therefore does not
+depend on logging; `next-loggers` (the Zed package published by the `ores.otel.log` repo)
+imports those contracts; `ores-lib-core` imports both contracts and the injectable logger
+package.
