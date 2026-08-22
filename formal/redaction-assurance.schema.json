@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.oresoftware.com/ores-lib-core/redaction-assurance/v1",
+  "title": "Polyglot redaction assurance manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema",
+    "subject",
+    "criticality",
+    "properties",
+    "domain",
+    "refinements"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./redaction-assurance.schema.json"
+    },
+    "schema": {
+      "const": "ores-lib-core/redaction-assurance/v1"
+    },
+    "subject": {
+      "const": "credential-redaction"
+    },
+    "criticality": {
+      "const": "security"
+    },
+    "properties": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "idempotence",
+          "sensitive-value-noninterference",
+          "safe-field-preservation",
+          "normalization-closure",
+          "secret-representation-opacity"
+        ]
+      }
+    },
+    "domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sensitiveRoots", "safeFields", "prefixes"],
+      "properties": {
+        "sensitiveRoots": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "safeFields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "prefixes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "refinements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["typescript", "rust", "dart"],
+      "properties": {
+        "typescript": { "$ref": "#/$defs/refinement" },
+        "rust": { "$ref": "#/$defs/refinement" },
+        "dart": { "$ref": "#/$defs/refinement" }
+      }
+    }
+  },
+  "$defs": {
+    "refinement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "check"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "check": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

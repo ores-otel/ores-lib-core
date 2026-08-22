@@ -1,0 +1,70 @@
+name: Formal redaction assurance
+
+on:
+  pull_request:
+    paths:
+      - 'formal/**'
+      - 'scripts/check_formal_assurance.py'
+      - 'languages/typescript/**'
+      - 'languages/rust/**'
+      - 'languages/dart/**'
+      - '.github/workflows/formal-verification.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'formal/**'
+      - 'scripts/check_formal_assurance.py'
+      - 'languages/typescript/**'
+      - 'languages/rust/**'
+      - 'languages/dart/**'
+      - '.github/workflows/formal-verification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: formal-redaction-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  properties:
+    name: TypeScript, Rust, and Dart properties
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Set up Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@65eb853c7ba17dde3be364c3d2858773e7144260 # v1
+        with:
+          sdk: stable
+      - name: Install minimum supported Rust toolchain
+        run: rustup toolchain install 1.70.0 --profile minimal --component rustfmt
+      - name: Validate the closed assurance manifest
+        run: python3 scripts/check_formal_assurance.py
+      - name: Check TypeScript properties
+        working-directory: languages/typescript
+        run: npm test
+      - name: Check Rust formatting
+        working-directory: languages/rust
+        run: rustfmt +1.70.0 --edition 2021 --check tests/formal_properties.rs
+      - name: Check Rust properties
+        working-directory: languages/rust
+        run: cargo +1.70.0 test
+      - name: Install Dart dependencies
+        working-directory: languages/dart
+        run: dart pub get
+      - name: Check Dart formal source formatting
+        working-directory: languages/dart
+        run: dart format --output=none --set-exit-if-changed tool/formal_check.dart
+      - name: Check Dart properties
+        working-directory: languages/dart
+        run: dart run tool/formal_check.dart

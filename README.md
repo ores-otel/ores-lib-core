@@ -21,6 +21,12 @@ logging is provided by
 - Face/fingerprint verification is represented only as a platform-authenticator verdict;
   raw biometric data is not accepted, retained, or logged.
 
+The security-critical redaction behavior has an executable formal-assurance
+layer under [`formal/`](formal/README.md). A closed JSON Schema declares the
+finite domain, and Rust, Dart, and TypeScript independently check idempotence,
+sensitive-value noninterference, safe-field preservation, normalization
+closure, and secret-representation opacity in CI.
+
 ## Shared Auth dashboard profile
 
 `contracts/shared-auth-dashboard-runtime.json` and
