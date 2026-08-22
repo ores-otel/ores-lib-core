@@ -1,0 +1,57 @@
+{
+  "$schema": "./redaction-assurance.schema.json",
+  "schema": "ores-lib-core/redaction-assurance/v1",
+  "subject": "credential-redaction",
+  "criticality": "security",
+  "properties": [
+    "idempotence",
+    "sensitive-value-noninterference",
+    "safe-field-preservation",
+    "normalization-closure",
+    "secret-representation-opacity"
+  ],
+  "domain": {
+    "sensitiveRoots": [
+      "authorization",
+      "cookie",
+      "password",
+      "secret",
+      "token",
+      "access_token",
+      "refresh_token",
+      "id_token",
+      "client_secret",
+      "private_key",
+      "totp_seed",
+      "webauthn_challenge",
+      "face_image",
+      "face_template",
+      "fingerprint_image",
+      "fingerprint_template",
+      "biometric_template",
+      "voiceprint"
+    ],
+    "safeFields": [
+      "request_id",
+      "trace_id",
+      "message",
+      "organization_id",
+      "status_code"
+    ],
+    "prefixes": ["", "oauth_", "x-vendor-", "telemetry."]
+  },
+  "refinements": {
+    "typescript": {
+      "source": "languages/typescript/src/index.js",
+      "check": "languages/typescript/test/formal_properties.test.js"
+    },
+    "rust": {
+      "source": "languages/rust/src/lib.rs",
+      "check": "languages/rust/tests/formal_properties.rs"
+    },
+    "dart": {
+      "source": "languages/dart/lib/ores_lib_core.dart",
+      "check": "languages/dart/tool/formal_check.dart"
+    }
+  }
+}
