@@ -7,6 +7,7 @@ target/
 __pycache__/
 *.pyc
 .dart_tool/
+.build/
 build/
 .zed/
 zed_modules/

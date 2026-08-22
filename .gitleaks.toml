@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "SHA-256 attestations for reviewed template paths"
+condition = "AND"
+regexTarget = "match"
+paths = ['''^\.ores-template-manifest\.json$''']
+regexes = [
+  '''"(?:contracts/shared-auth-data-model\.json|database/postgres/shared_auth_v1\.sql|docs/shared-auth-data-model\.md)": "[a-f0-9]{64}"''',
+]

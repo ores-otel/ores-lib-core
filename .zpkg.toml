@@ -29,6 +29,11 @@ smoke_test = "python3 scripts/check_core.py"
 dir = "."
 adapter = "none"
 
+[targets.postgres]
+dir = "database/postgres"
+name = "ores-shared-auth-postgres"
+adapter = "none"
+
 [targets.rust]
 dir = "languages/rust"
 name = "ores-lib-core-rust"
