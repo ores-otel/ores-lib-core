@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Generic, TypeVar
 T=TypeVar("T"); R=TypeVar("R")
 REDACTED="[REDACTED]"
@@ -17,3 +18,20 @@ class Secret(Generic[T]):
     def expose(self, action:Callable[[T],R])->R: return action(self.__value)
     def __repr__(self)->str: return REDACTED
     __str__=__repr__
+
+DIRECTORY_ADMIN_ROLE="directory_admin"
+DIRECTORY_REVOCATIONS_EXECUTE_SCOPE="directory.revocations.execute"
+@dataclass(frozen=True, slots=True)
+class DirectoryGrant:
+    grant_id: str
+    organization_id: str
+    project_ids: tuple[str, ...] | None
+    scopes: tuple[str, ...]
+    roles: tuple[str, ...]
+    granted_at: str
+    expires_at: str | None
+    def allows(self, required_scope: str) -> bool:
+        return "*" not in required_scope and DIRECTORY_ADMIN_ROLE in self.roles and required_scope in self.scopes
+def authorized_directory_organizations(requested: tuple[str, ...] | None, required_scope: str, grants: tuple[DirectoryGrant, ...]) -> tuple[str, ...]:
+    requested_set=None if requested is None else set(requested)
+    return tuple(sorted({grant.organization_id for grant in grants if grant.allows(required_scope) and grant.project_ids is None and (requested_set is None or grant.organization_id in requested_set)}))
