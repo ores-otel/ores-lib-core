@@ -7,5 +7,10 @@ license = "MIT"
 description = "Security-oriented core helpers for OreSoftware Rust services"
 repository = "https://github.com/ores-otel/ores-lib-core"
 
+[features]
+default = ["read-only"]
+read-only = []
+read-write = ["read-only"]
+
 [lib]
 path = "src/lib.rs"
