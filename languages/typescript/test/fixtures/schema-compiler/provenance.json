@@ -1,0 +1,9 @@
+{
+  "repository": "ores-otel/ores-interfaces",
+  "commit": "e9fafe156cf197a914bd041fb7d90ebf9698f8f7",
+  "path": "contracts/schema-ir/v1/examples/team-directory.json",
+  "sha256": "bae11ab825039bcd8429d52683e0b19c100d05031bb1cd3684801935823c14cb",
+  "contractPath": "contracts/schema-ir/v1/schema.json",
+  "contractSha256": "db8abedc00b4858fcc81bdc3c9cf42f5e45e979ad626070c51400f042ec9c04a",
+  "scope": "Vendored offline test fixture only; not a runtime or Zed package resolution pin."
+}
