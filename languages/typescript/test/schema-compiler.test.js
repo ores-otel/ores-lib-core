@@ -288,3 +288,14 @@ test("zero length bounds and nullable unique fields are preserved", () => {
   assert.match(artifacts.postgres, /"name" pg_catalog\.text CHECK \(pg_catalog\.char_length\("name"\) >= 0\) CHECK \(pg_catalog\.char_length\("name"\) <= 0\)/);
   assert.match(artifacts.postgres, /UNIQUE \("name"\)/);
 });
+
+// Invalid JSON-shaped bounds must never reach a coercing relational comparison.
+for (const [label, value] of [["null", null], ["boolean", false], ["array", []], ["object", {}], ["non-coercible object", { toString: null, valueOf: null }], ["numeric string", "12"], ["fractional number", 2.5]]) {
+  for (const bound of ["minLength", "maxLength"]) {
+    test(`rejects ${label} ${bound} with diagnostics rather than throwing`, () => {
+      const input = fresh();
+      input.models[0].fields[1][bound] = value;
+      assert.doesNotThrow(() => failure(input, "INVALID_LENGTH"));
+    });
+  }
+}

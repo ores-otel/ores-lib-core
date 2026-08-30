@@ -183,7 +183,7 @@ export function validate(input) {
             error("INVALID_LENGTH", `${here}.${key}`, "String lengths must be integers from 0 to 1048576 and apply only to string fields.");
           }
         }
-        if (field.minLength !== undefined && field.maxLength !== undefined && field.minLength > field.maxLength) {
+        if (Number.isInteger(field.minLength) && Number.isInteger(field.maxLength) && field.minLength > field.maxLength) {
           error("CONTRADICTORY_LENGTH", here, "Minimum string length exceeds maximum string length.");
         }
       });
