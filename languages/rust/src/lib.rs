@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+pub mod rpc_retry;
+
 use std::fmt::{Debug, Display, Formatter};
 
 pub const REDACTED: &str = "[REDACTED]";
