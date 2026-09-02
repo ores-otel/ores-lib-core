@@ -14,6 +14,7 @@ const sqlName = (ir, entity) => `${quote(ir.databaseSchema)}.${quote(entity.tabl
 const columns = (entity, names) => names.map((name) => quote(entity.fields.find((field) => field.name === name).column)).join(", ");
 const generatedName = (kind, table, detail) => `ores_${kind}_${sha256(JSON.stringify([table, detail])).slice(0, 24)}`;
 const sqlScalar = Object.freeze({ string: "TEXT", uuid: "UUID", int32: "INTEGER", boolean: "BOOLEAN" });
+const deleteAction = Object.freeze({ noAction: "NO ACTION", restrict: "RESTRICT", cascade: "CASCADE", setNull: "SET NULL" });
 
 function emitSql(ir) {
   const relations = new Set(ir.entities.map((entity) => entity.table));
@@ -41,7 +42,7 @@ function emitSql(ir) {
   // Foreign keys follow ALL table declarations: self-references and cycles are valid.
   const references = ir.entities.flatMap((entity) => entity.foreignKeys.map((fk) => {
     const target = ir.entities.find((candidate) => candidate.name === fk.references.entity);
-    return `ALTER TABLE ${sqlName(ir, entity)} ADD CONSTRAINT ${quote(generatedName("fk", entity.table, fk))} FOREIGN KEY (${columns(entity, fk.fields)}) REFERENCES ${sqlName(ir, target)} (${columns(target, fk.references.fields)}) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE NO ACTION;`;
+    return `ALTER TABLE ${sqlName(ir, entity)} ADD CONSTRAINT ${quote(generatedName("fk", entity.table, fk))} FOREIGN KEY (${columns(entity, fk.fields)}) REFERENCES ${sqlName(ir, target)} (${columns(target, fk.references.fields)}) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE ${deleteAction[fk.onDelete]};`;
   }));
   const indexes = ir.entities.flatMap((entity) => entity.indexes.map((key) => `CREATE INDEX ${relationName("idx", entity.table, key)} ON ${sqlName(ir, entity)} (${columns(entity, key)});`));
   return ["-- Generated desired state, NOT an executable migration plan.", "-- Schema provisioning, RLS, grants, triggers, defaults and backfills remain external.", "-- No CREATE/ALTER/DROP is executed by this compiler.", "", [...tables, ...references, ...indexes].join("\n\n"), ""].join("\n");
