@@ -1,6 +1,7 @@
 /** Strict, side-effect-free validation for the deliberately bounded v1 IR. */
 export const IR_VERSION = "ores.schema-ir.v1";
 const TYPES = new Set(["string", "uuid", "int32", "boolean"]);
+const DELETE_ACTIONS = new Set(["noAction", "restrict", "cascade", "setNull"]);
 const IDENTIFIER = /^[a-z][a-z0-9_]{0,62}$/;
 const SYSTEM_COLUMNS = new Set(["tableoid", "xmin", "cmin", "xmax", "cmax", "ctid"]);
 const FIELD = /^[a-z][A-Za-z0-9]{0,62}$/;
@@ -103,17 +104,22 @@ function entity(value, path) {
   unique(indexes.map((key) => JSON.stringify(key)), `${path}/indexes`);
   const foreignKeys = list(Object.hasOwn(value, "foreignKeys") ? value.foreignKeys : [], `${path}/foreignKeys`).map((fk, i) => {
     const at = `${path}/foreignKeys/${i}`;
-    record(fk, ["fields", "references"], [], at);
+    record(fk, ["fields", "references"], ["onDelete"], at);
     record(fk.references, ["entity", "fields"], [], `${at}/references`);
     name(fk.references.entity, MODEL, `${at}/references/entity`, RESERVED_MODELS);
     list(fk.references.fields, `${at}/references/fields`, 1, 16);
     for (const item of fk.references.fields) name(item, FIELD, `${at}/references/fields`, RESERVED_FIELDS);
     unique(fk.references.fields, `${at}/references/fields`);
+    if (Object.hasOwn(fk, "onDelete") && !DELETE_ACTIONS.has(fk.onDelete)) fail("UNKNOWN_PROPERTY", `${at}/onDelete`, "Unsupported delete policy is not silently ignored.");
     const local = tuple(fk.fields, byName, `${at}/fields`);
     if (local.length !== fk.references.fields.length) fail("INVALID_REFERENCE", at, "Foreign-key arities must match.");
-    return { fields: local, references: { entity: fk.references.entity, fields: [...fk.references.fields] } };
+    return {
+      fields: local,
+      references: { entity: fk.references.entity, fields: [...fk.references.fields] },
+      onDelete: fk.onDelete ?? "noAction",
+    };
   });
-  unique(foreignKeys.map((fk) => JSON.stringify(fk)), `${path}/foreignKeys`);
+  unique(foreignKeys.map((fk) => JSON.stringify([fk.fields, fk.references])), `${path}/foreignKeys`);
   return { name: value.name, table: value.table, fields: fields.sort((a, b) => order(a.name, b.name)), primaryKey, uniqueKeys: uniqueKeys.sort((a, b) => order(JSON.stringify(a), JSON.stringify(b))), indexes: indexes.sort((a, b) => order(JSON.stringify(a), JSON.stringify(b))), foreignKeys: foreignKeys.sort((a, b) => order(JSON.stringify(a), JSON.stringify(b))) };
 }
 
@@ -137,6 +143,7 @@ export function normalizeSchemaIr(input) {
     if (![target.primaryKey, ...target.uniqueKeys].some((key) => JSON.stringify(key) === JSON.stringify(fk.references.fields))) fail("INVALID_REFERENCE", path, "Foreign-key target must be an explicitly declared, ordered unique key.");
     const localFields = new Map(item.fields.map((f) => [f.name, f]));
     if (fk.fields.some((key, k) => localFields.get(key).type !== targetFields.get(fk.references.fields[k]).type)) fail("INVALID_REFERENCE", path, "Foreign-key scalar types must match.");
+    if (fk.onDelete === "setNull" && fk.fields.some((key) => !localFields.get(key).nullable)) fail("INVALID_REFERENCE", path, "SET NULL requires every local foreign-key field to be nullable.");
   }));
   return { schemaVersion: IR_VERSION, databaseSchema: input.databaseSchema, entities: entities.sort((a, b) => order(a.name, b.name)) };
 }
