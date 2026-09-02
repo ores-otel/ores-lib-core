@@ -47,6 +47,7 @@ resolution remains unchanged; no npm dependency or placeholder lock is added.
 
 ```sh
 node --test languages/typescript/test/schema-ir.test.js
+node --test languages/typescript/test/schema-ir-delete-policy.test.js
 ```
 
 The independent source-pinned fixture suite lives in `ores-otel-e2e/schema-ir`.
@@ -60,14 +61,21 @@ bounds, PKs, unique keys, indexes, and typed FKs are supported. Unknown metadata
 reserved/system names, unsafe identifiers, malformed JSON objects, duplicate
 names, invalid keys and incompatible relations fail closed.
 
+Foreign-key delete behavior is preserved as reviewed input. Missing `onDelete`
+retains the v1 `NO ACTION` compatibility default; explicit `restrict`, `cascade`,
+and `setNull` map to PostgreSQL `RESTRICT`, `CASCADE`, and `SET NULL`. `SET NULL`
+is rejected unless every local foreign-key column is nullable, and the same
+relationship cannot be repeated with conflicting policies.
+
 SQL is desired state only. The compiler neither connects to a database nor
 executes SQL. Schema provisioning, RLS, grants, defaults, triggers, data backfills,
 locking, destructive-change approval, and production rollout remain outside it.
 Foreign keys follow all CREATE TABLE statements, so cycles and self-references do
-not depend on input declaration order. No cascade semantics are inferred.
+not depend on input declaration order. No cascade behavior is inferred: it must be
+present in the validated IR.
 
 TypeSpec input, CUE input, arbitrary JSON Schema import, Atlas planning, SeaORM or
-Drizzle adapters, serializer generation, and complete multi-language constraint
+Diesel adapters, serializer generation, and complete multi-language constraint
 parity are **not implemented**. The CUE/Rust/Dart outputs and disposable-PostgreSQL
 acceptance require their native toolchains before promotion; tests of output text
 are not evidence that those compilers or PostgreSQL executed successfully.
