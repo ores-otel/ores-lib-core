@@ -240,7 +240,9 @@ impl fmt::Display for TelemetryError {
             Self::InvalidPolicyId => formatter.write_str(
                 "rate-limit policy ID may contain only ASCII letters, digits, '.', ':', '_', and '-'",
             ),
-            Self::UnknownMetricAttribute => formatter.write_str("unknown rate-limit metric attribute"),
+            Self::UnknownMetricAttribute => {
+                formatter.write_str("unknown rate-limit metric attribute")
+            }
             Self::TraceOnlyMetricAttribute => {
                 formatter.write_str("trace/log-only rate-limit attribute cannot label a metric")
             }
@@ -345,7 +347,7 @@ pub fn validate_metric_attribute(name: &str) -> Result<(), TelemetryError> {
 pub fn is_forbidden_attribute(name: &str) -> bool {
     let normalized = name.to_ascii_lowercase().replace('-', "_");
     let leaf = normalized
-        .rsplit(['.', '/', ':'])
+        .rsplit(|character| matches!(character, '.' | '/' | ':'))
         .next()
         .unwrap_or(normalized.as_str());
     FORBIDDEN_ATTRIBUTE_ROOTS.iter().any(|forbidden| {
@@ -386,14 +388,18 @@ mod tests {
 
     #[test]
     fn policy_ids_are_static_and_bounded() {
-        assert_eq!(PolicyId::new("edge.login.v1").unwrap().as_str(), "edge.login.v1");
+        assert_eq!(
+            PolicyId::new("edge.login.v1").unwrap().as_str(),
+            "edge.login.v1"
+        );
         assert_eq!(PolicyId::new(""), Err(TelemetryError::EmptyPolicyId));
         assert_eq!(
             PolicyId::new("GET /users/0199e7bd-7c7d-7000-8000-000000000001"),
             Err(TelemetryError::InvalidPolicyId)
         );
+        let too_long = "a".repeat(POLICY_ID_MAX_UTF8_BYTES + 1);
         assert_eq!(
-            PolicyId::new(&"a".repeat(POLICY_ID_MAX_UTF8_BYTES + 1)),
+            PolicyId::new(&too_long),
             Err(TelemetryError::PolicyIdTooLong)
         );
     }
