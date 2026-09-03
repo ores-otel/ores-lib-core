@@ -351,9 +351,7 @@ pub fn is_forbidden_attribute(name: &str) -> bool {
         .next()
         .unwrap_or(normalized.as_str());
     FORBIDDEN_ATTRIBUTE_ROOTS.iter().any(|forbidden| {
-        leaf == *forbidden
-            || leaf.ends_with(&format!("_{forbidden}"))
-            || normalized == *forbidden
+        leaf == *forbidden || leaf.ends_with(&format!("_{forbidden}")) || normalized == *forbidden
     })
 }
 
