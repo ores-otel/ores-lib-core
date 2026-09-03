@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod rate_limit;
 pub mod rpc_retry;
 
 use std::fmt::{Debug, Display, Formatter};
