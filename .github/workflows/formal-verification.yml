@@ -61,9 +61,21 @@ jobs:
       - name: Check TypeScript properties
         working-directory: languages/typescript
         run: npm test
-      - name: Check Rust formatting
+      - name: Generate and check Rust formatting
         working-directory: languages/rust
-        run: rustfmt +1.70.0 --edition 2021 --check src/rate_limit.rs tests/formal_properties.rs tests/rate_limit_telemetry.rs
+        run: |
+          set -euo pipefail
+          rustfmt +1.70.0 --edition 2021 src/rate_limit.rs tests/formal_properties.rs tests/rate_limit_telemetry.rs
+          git diff -- src/rate_limit.rs tests/formal_properties.rs tests/rate_limit_telemetry.rs > "${RUNNER_TEMP}/rustfmt.diff"
+          test ! -s "${RUNNER_TEMP}/rustfmt.diff"
+      - name: Upload Rust formatting patch on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rate-limit-rustfmt-${{ github.sha }}
+          path: ${{ runner.temp }}/rustfmt.diff
+          if-no-files-found: error
+          retention-days: 3
       - name: Check Rust properties
         working-directory: languages/rust
         run: cargo +1.70.0 test
