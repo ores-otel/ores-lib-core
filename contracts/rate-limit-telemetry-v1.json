@@ -1,0 +1,151 @@
+{
+  "$schema": "./rate-limit-telemetry-v1.schema.json",
+  "schema": "ores-otel/rate-limit-telemetry/v1",
+  "eventName": "ores.rate_limit.decision.v1",
+  "metrics": {
+    "decisions": {
+      "name": "ores.rate_limit.decisions",
+      "instrument": "counter",
+      "unit": "{decision}",
+      "allowedAttributes": [
+        "ores.rate_limit.policy_id",
+        "ores.rate_limit.layer",
+        "ores.rate_limit.algorithm",
+        "ores.rate_limit.outcome",
+        "ores.rate_limit.source",
+        "ores.rate_limit.principal_kind",
+        "ores.rate_limit.failure_mode",
+        "ores.rate_limit.retry_bucket",
+        "ores.rate_limit.observed_only"
+      ]
+    },
+    "backendErrors": {
+      "name": "ores.rate_limit.backend.errors",
+      "instrument": "counter",
+      "unit": "{error}",
+      "allowedAttributes": [
+        "ores.rate_limit.layer",
+        "ores.rate_limit.source",
+        "ores.rate_limit.failure_mode"
+      ]
+    },
+    "cacheEntries": {
+      "name": "ores.rate_limit.cache.entries",
+      "instrument": "up_down_counter",
+      "unit": "{entry}",
+      "allowedAttributes": [
+        "ores.rate_limit.source"
+      ]
+    },
+    "retryAfter": {
+      "name": "ores.rate_limit.retry_after",
+      "instrument": "histogram",
+      "unit": "ms",
+      "allowedAttributes": [
+        "ores.rate_limit.policy_id",
+        "ores.rate_limit.layer",
+        "ores.rate_limit.algorithm",
+        "ores.rate_limit.source",
+        "ores.rate_limit.retry_bucket"
+      ]
+    }
+  },
+  "attributes": {
+    "requiredDecision": [
+      "ores.rate_limit.policy_id",
+      "ores.rate_limit.layer",
+      "ores.rate_limit.algorithm",
+      "ores.rate_limit.outcome",
+      "ores.rate_limit.source",
+      "ores.rate_limit.principal_kind"
+    ],
+    "optionalDecision": [
+      "ores.rate_limit.failure_mode",
+      "ores.rate_limit.retry_bucket",
+      "ores.rate_limit.observed_only"
+    ],
+    "traceOrLogOnly": [
+      "ores.rate_limit.principal_fingerprint",
+      "http.request_id",
+      "trace_id"
+    ]
+  },
+  "enums": {
+    "layer": [
+      "edge",
+      "load_balancer",
+      "service",
+      "authentication",
+      "data_store"
+    ],
+    "algorithm": [
+      "token_bucket",
+      "fixed_window",
+      "sliding_window",
+      "concurrency"
+    ],
+    "outcome": [
+      "allow",
+      "deny",
+      "observe_only_overage",
+      "bypass",
+      "degraded_allow"
+    ],
+    "source": [
+      "cloudflare_binding",
+      "cloudflare_deny_cache",
+      "ingress_nginx",
+      "envoy_local",
+      "traefik_local",
+      "local_memory",
+      "redis_authoritative",
+      "redis_deny_cache",
+      "data_store"
+    ],
+    "principalKind": [
+      "anonymous_ip",
+      "authenticated_subject",
+      "service_identity",
+      "tenant",
+      "composite"
+    ],
+    "failureMode": [
+      "fail_open",
+      "fail_closed",
+      "local_fallback",
+      "not_applicable"
+    ],
+    "retryBucket": [
+      "none",
+      "lt_1s",
+      "1s_10s",
+      "10s_60s",
+      "1m_5m",
+      "gt_5m"
+    ]
+  },
+  "cardinality": {
+    "policyIdIsStaticConfiguration": true,
+    "dynamicRouteLabelsAllowed": false,
+    "principalFingerprintAllowedInMetrics": false,
+    "principalFingerprintPattern": "^[0-9a-f]{12}…$",
+    "policyIdMaxUtf8Bytes": 128
+  },
+  "forbiddenAttributes": [
+    "authorization",
+    "cookie",
+    "email",
+    "ip",
+    "client_ip",
+    "user_id",
+    "tenant_id",
+    "session_id",
+    "subject",
+    "token",
+    "principal",
+    "principal_digest",
+    "rate_limit_key",
+    "redis_key",
+    "cache_key"
+  ]
+}

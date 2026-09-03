@@ -1,0 +1,29 @@
+{
+  "schema": "ores-lib-core/rate-limit-telemetry-assurance/v1",
+  "subject": "rate-limit-telemetry",
+  "criticality": "security",
+  "properties": [
+    "enum-exhaustiveness",
+    "identity-noninterference",
+    "low-cardinality-closure",
+    "metric-trace-separation",
+    "retry-bucket-totality"
+  ],
+  "domain": {
+    "metricIdentityAttributesAllowed": false,
+    "dynamicRouteLabelsAllowed": false,
+    "rawPrincipalMaterialAllowed": false,
+    "traceFingerprintBytes": 6,
+    "policyIdMaxUtf8Bytes": 128
+  },
+  "refinements": {
+    "contract": {
+      "source": "contracts/rate-limit-telemetry-v1.json",
+      "check": "scripts/check_rate_limit_telemetry.py"
+    },
+    "rust": {
+      "source": "languages/rust/src/rate_limit.rs",
+      "check": "languages/rust/tests/rate_limit_telemetry.rs"
+    }
+  }
+}

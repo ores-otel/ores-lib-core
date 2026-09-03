@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ores-otel/ores-lib-core/contracts/rate-limit-telemetry-v1.schema.json",
+  "title": "ORE rate-limit telemetry semantic convention",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema",
+    "eventName",
+    "metrics",
+    "attributes",
+    "enums",
+    "cardinality",
+    "forbiddenAttributes"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./rate-limit-telemetry-v1.schema.json"
+    },
+    "schema": {
+      "const": "ores-otel/rate-limit-telemetry/v1"
+    },
+    "eventName": {
+      "const": "ores.rate_limit.decision.v1"
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decisions", "backendErrors", "cacheEntries", "retryAfter"],
+      "properties": {
+        "decisions": {
+          "$ref": "#/$defs/metric"
+        },
+        "backendErrors": {
+          "$ref": "#/$defs/metric"
+        },
+        "cacheEntries": {
+          "$ref": "#/$defs/metric"
+        },
+        "retryAfter": {
+          "$ref": "#/$defs/metric"
+        }
+      }
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiredDecision", "optionalDecision", "traceOrLogOnly"],
+      "properties": {
+        "requiredDecision": {
+          "$ref": "#/$defs/uniqueNames"
+        },
+        "optionalDecision": {
+          "$ref": "#/$defs/uniqueNames"
+        },
+        "traceOrLogOnly": {
+          "$ref": "#/$defs/uniqueNames"
+        }
+      }
+    },
+    "enums": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layer",
+        "algorithm",
+        "outcome",
+        "source",
+        "principalKind",
+        "failureMode",
+        "retryBucket"
+      ],
+      "properties": {
+        "layer": {
+          "const": ["edge", "load_balancer", "service", "authentication", "data_store"]
+        },
+        "algorithm": {
+          "const": ["token_bucket", "fixed_window", "sliding_window", "concurrency"]
+        },
+        "outcome": {
+          "const": ["allow", "deny", "observe_only_overage", "bypass", "degraded_allow"]
+        },
+        "source": {
+          "const": [
+            "cloudflare_binding",
+            "cloudflare_deny_cache",
+            "ingress_nginx",
+            "envoy_local",
+            "traefik_local",
+            "local_memory",
+            "redis_authoritative",
+            "redis_deny_cache",
+            "data_store"
+          ]
+        },
+        "principalKind": {
+          "const": [
+            "anonymous_ip",
+            "authenticated_subject",
+            "service_identity",
+            "tenant",
+            "composite"
+          ]
+        },
+        "failureMode": {
+          "const": ["fail_open", "fail_closed", "local_fallback", "not_applicable"]
+        },
+        "retryBucket": {
+          "const": ["none", "lt_1s", "1s_10s", "10s_60s", "1m_5m", "gt_5m"]
+        }
+      }
+    },
+    "cardinality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyIdIsStaticConfiguration",
+        "dynamicRouteLabelsAllowed",
+        "principalFingerprintAllowedInMetrics",
+        "principalFingerprintPattern",
+        "policyIdMaxUtf8Bytes"
+      ],
+      "properties": {
+        "policyIdIsStaticConfiguration": {
+          "const": true
+        },
+        "dynamicRouteLabelsAllowed": {
+          "const": false
+        },
+        "principalFingerprintAllowedInMetrics": {
+          "const": false
+        },
+        "principalFingerprintPattern": {
+          "const": "^[0-9a-f]{12}…$"
+        },
+        "policyIdMaxUtf8Bytes": {
+          "const": 128
+        }
+      }
+    },
+    "forbiddenAttributes": {
+      "$ref": "#/$defs/uniqueNames"
+    }
+  },
+  "$defs": {
+    "uniqueNames": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "instrument", "unit", "allowedAttributes"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^ores\\.rate_limit\\.[a-z_.]+$"
+        },
+        "instrument": {
+          "enum": ["counter", "up_down_counter", "histogram"]
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "allowedAttributes": {
+          "$ref": "#/$defs/uniqueNames"
+        }
+      }
+    }
+  }
+}

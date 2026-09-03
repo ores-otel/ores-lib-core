@@ -22,6 +22,7 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 scripts/check_core.py
+      - run: python3 scripts/check_rate_limit_telemetry.py
 
   native:
     runs-on: ubuntu-24.04
