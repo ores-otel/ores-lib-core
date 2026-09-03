@@ -51,7 +51,10 @@ fn rust_refinement_is_closed_over_contract_enums() {
         RetryBucket::OneToFiveMinutes.as_str(),
         RetryBucket::GreaterThanFiveMinutes.as_str(),
     ] {
-        assert!(CONTRACT.contains(&format!("\"{value}\"")), "missing {value}");
+        assert!(
+            CONTRACT.contains(&format!("\"{value}\"")),
+            "missing {value}"
+        );
     }
 }
 
