@@ -22,8 +22,8 @@
       "check": "scripts/check_rate_limit_telemetry.py"
     },
     "rust": {
-      "source": "languages/rust/src/rate_limit.rs",
-      "check": "languages/rust/tests/rate_limit_telemetry.rs"
+      "source": "langs/rust/src/rate_limit.rs",
+      "check": "langs/rust/tests/rate_limit_telemetry.rs"
     }
   }
 }

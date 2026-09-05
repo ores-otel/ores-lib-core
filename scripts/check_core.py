@@ -152,7 +152,7 @@ def validate_shared_auth_data_model() -> None:
     assert "REVOKE ALL ON ALL TABLES IN SCHEMA ores_shared_auth FROM PUBLIC;" in sql
 
     sources = "\n".join(
-        (ROOT / "languages" / language / path).read_text(encoding="utf-8")
+        (ROOT / "langs" / language / path).read_text(encoding="utf-8")
         for language, path in (
             ("rust", "src/lib.rs"),
             ("typescript", "src/index.js"),
@@ -205,7 +205,7 @@ def validate_shared_auth_data_model() -> None:
             "java": "src/main/java/com/oresoftware/core/OresCore.java",
             "swift": "Sources/OresLibCore/OresLibCore.swift",
         }[language]
-        source = (ROOT / "languages" / language / source_path).read_text(encoding="utf-8")
+        source = (ROOT / "langs" / language / source_path).read_text(encoding="utf-8")
         assert guard in source, f"{language} elevates project-bound directory grants"
 
 
@@ -265,7 +265,7 @@ def main() -> int:
     assert '[targets.postgres]' in zpkg
     assert 'dir = "database/postgres"' in zpkg
 
-    rust_lock = ROOT / "languages/rust/Cargo.lock"
+    rust_lock = ROOT / "langs/rust/Cargo.lock"
     assert rust_lock.is_file(), "Rust lockfile is required for locked verification"
     assert 'name = "ores-lib-core"' in rust_lock.read_text(encoding="utf-8")
 
@@ -276,7 +276,7 @@ def main() -> int:
     validate_dashboard_runtime()
     validate_shared_auth_data_model()
 
-    present = {path.name for path in (ROOT / "languages").iterdir() if path.is_dir()}
+    present = {path.name for path in (ROOT / "langs").iterdir() if path.is_dir()}
     assert LANGUAGES <= present, LANGUAGES - present
     for path in ROOT.rglob("*"):
         if path.resolve() == pathlib.Path(__file__).resolve():

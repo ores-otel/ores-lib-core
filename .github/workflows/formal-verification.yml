@@ -8,9 +8,9 @@ on:
       - 'docs/rate-limit-telemetry.md'
       - 'scripts/check_formal_assurance.py'
       - 'scripts/check_rate_limit_telemetry.py'
-      - 'languages/typescript/**'
-      - 'languages/rust/**'
-      - 'languages/dart/**'
+      - 'langs/typescript/**'
+      - 'langs/rust/**'
+      - 'langs/dart/**'
       - '.github/workflows/formal-verification.yml'
   push:
     branches: [main]
@@ -20,9 +20,9 @@ on:
       - 'docs/rate-limit-telemetry.md'
       - 'scripts/check_formal_assurance.py'
       - 'scripts/check_rate_limit_telemetry.py'
-      - 'languages/typescript/**'
-      - 'languages/rust/**'
-      - 'languages/dart/**'
+      - 'langs/typescript/**'
+      - 'langs/rust/**'
+      - 'langs/dart/**'
       - '.github/workflows/formal-verification.yml'
   workflow_dispatch:
 
@@ -59,10 +59,10 @@ jobs:
           python3 scripts/check_formal_assurance.py
           python3 scripts/check_rate_limit_telemetry.py
       - name: Check TypeScript properties
-        working-directory: languages/typescript
+        working-directory: langs/typescript
         run: npm test
       - name: Generate and check Rust formatting
-        working-directory: languages/rust
+        working-directory: langs/rust
         run: |
           set -euo pipefail
           rustfmt +1.70.0 --edition 2021 src/rate_limit.rs tests/formal_properties.rs tests/rate_limit_telemetry.rs
@@ -77,14 +77,14 @@ jobs:
           if-no-files-found: error
           retention-days: 3
       - name: Check Rust properties
-        working-directory: languages/rust
+        working-directory: langs/rust
         run: cargo +1.70.0 test
       - name: Install Dart dependencies
-        working-directory: languages/dart
+        working-directory: langs/dart
         run: dart pub get
       - name: Check Dart formal source formatting
-        working-directory: languages/dart
+        working-directory: langs/dart
         run: dart format --output=none --set-exit-if-changed tool/formal_check.dart
       - name: Check Dart properties
-        working-directory: languages/dart
+        working-directory: langs/dart
         run: dart run tool/formal_check.dart
