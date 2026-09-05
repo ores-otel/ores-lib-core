@@ -78,13 +78,13 @@ and check that unsafe/cancelled calls never retry and retries fit the deadline.
 Run from the repository root using existing toolchain installations:
 
 ```sh
-(cd languages/typescript && npm test)
-(cd languages/rust && cargo test)
-(cd languages/dart && dart run tool/rpc_retry_check.dart)
+(cd langs/typescript && npm test)
+(cd langs/rust && cargo test)
+(cd langs/dart && dart run tool/rpc_retry_check.dart)
 ```
 
 The existing native workflow discovers the Rust/JS tests and runs the Dart checker.
-`languages/typescript/test/rpc-retry.types.ts` is an additional strict declaration
+`langs/typescript/test/rpc-retry.types.ts` is an additional strict declaration
 check (`tsc --noEmit --strict --module nodenext --target es2022 ...`); TypeScript is
 not silently downloaded or added as an unpinned dependency. Full-repository,
 Dart-web, browser/WASM and database integration gates must be reported separately.

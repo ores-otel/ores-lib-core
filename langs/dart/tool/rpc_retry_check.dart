@@ -1,7 +1,7 @@
 import 'dart:io';
 import '../lib/rpc_retry.dart';
 
-// Run from languages/dart, like the existing native CI checks. No network/dependencies.
+// Run from langs/dart, like the existing native CI checks. No network/dependencies.
 void main() {
   final rows = File('../../contracts/rpc-retry-v1.csv').readAsLinesSync().skip(1);
   var count = 0;
