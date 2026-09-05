@@ -35,36 +35,36 @@ name = "ores-shared-auth-postgres"
 adapter = "none"
 
 [targets.rust]
-dir = "languages/rust"
+dir = "langs/rust"
 name = "ores-lib-core-rust"
 adapter = "rust"
 
 [targets.typescript]
-dir = "languages/typescript"
+dir = "langs/typescript"
 name = "ores-lib-core-typescript"
 adapter = "node"
 
 [targets.golang]
-dir = "languages/go"
+dir = "langs/go"
 name = "ores-lib-core-go"
 adapter = "go"
 
 [targets.python]
-dir = "languages/python"
+dir = "langs/python"
 name = "ores-lib-core-python"
 adapter = "python"
 
 [targets.dart]
-dir = "languages/dart"
+dir = "langs/dart"
 name = "ores-lib-core-dart"
 adapter = "dart"
 
 [targets.java]
-dir = "languages/java"
+dir = "langs/java"
 name = "ores-lib-core-java"
 adapter = "java"
 
 [targets.swift]
-dir = "languages/swift"
+dir = "langs/swift"
 name = "ores-lib-core-swift"
 adapter = "none"
