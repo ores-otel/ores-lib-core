@@ -94,7 +94,8 @@ Two format limits, inherited from sops' dotenv parser:
 
 - **No multi-line values.** Encode PEM line breaks as literal `\n` escapes in
   one dotenv value. Keep private-key material in encrypted values, not in
-  documentation examples that resemble real keys.
+  documentation examples that resemble real keys; use a non-secret placeholder
+  such as `JWT_PRIVATE_KEY="<PEM contents with \\n escapes>"`.
 - **Blank lines are dropped** on round-trip. Cosmetic only.
 
 ## Containers
