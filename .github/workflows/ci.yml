@@ -22,6 +22,7 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 scripts/check_core.py
+      - run: python3 scripts/check_rate_limit_telemetry.py
 
   native:
     runs-on: ubuntu-24.04
@@ -41,13 +42,13 @@ jobs:
           LANGUAGE: ${{ matrix.language }}
         run: |
           set -euo pipefail
-          root="languages/$LANGUAGE"
+          root="langs/$LANGUAGE"
           case "$LANGUAGE" in
             rust) (cd "$root" && cargo test) ;;
             go) (cd "$root" && go test ./...) ;;
             typescript) (cd "$root" && npm test) ;;
             python) (cd "$root" && PYTHONPATH=src python -m unittest discover -s tests -v) ;;
-            dart) (cd "$root" && dart pub get && dart analyze && dart run tool/check.dart) ;;
+            dart) (cd "$root" && dart pub get && dart analyze && dart run tool/check.dart && dart run tool/rpc_retry_check.dart) ;;
             java)
               mkdir -p "$RUNNER_TEMP/java"
               if [ -f "$root/src/main/java/com/oresoftware/interfaces/AuthContracts.java" ]; then

@@ -8,7 +8,7 @@ benefactor-cc, 3FA-app and zed-pkg (the `ORESoftware/ores-sops` contract).
 env/enc/dev.env.enc     ciphertext — committed. This is the source of truth.
 env/enc/prod.env.enc    ciphertext — committed. Protected-operator recipients.
 env/dec/dev.env         plaintext  — gitignored, mode 0600, disposable.
-env/dec/prod.env        plaintext  — gitignored, mode 0600, disposable.
+env/dec/prod.env         plaintext  — gitignored, mode 0600, disposable.
 .env                    relative managed symlink -> env/dec/<name>.env
 ```
 
@@ -92,9 +92,10 @@ encrypted, so anything explanatory belongs in this file instead.
 
 Two format limits, inherited from sops' dotenv parser:
 
-- **No multi-line values.** A PEM must be a single line with `\n` escapes;
-  use a non-secret placeholder in documentation, for example
-  `JWT_PRIVATE_KEY="<PEM contents with \\n escapes>"`.
+- **No multi-line values.** Encode PEM line breaks as literal `\n` escapes in
+  one dotenv value. Keep private-key material in encrypted values, not in
+  documentation examples that resemble real keys; use a non-secret placeholder
+  such as `JWT_PRIVATE_KEY="<PEM contents with \\n escapes>"`.
 - **Blank lines are dropped** on round-trip. Cosmetic only.
 
 ## Containers
