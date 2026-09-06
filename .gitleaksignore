@@ -1,0 +1,4 @@
+# Exact historical false positives: SHA-256 template attestations, not credentials.
+8f3299409ee33c55fdbb2d2e64630a5e0b72f6fc:.ores-template-manifest.json:generic-api-key:10
+8f3299409ee33c55fdbb2d2e64630a5e0b72f6fc:.ores-template-manifest.json:generic-api-key:11
+8f3299409ee33c55fdbb2d2e64630a5e0b72f6fc:.ores-template-manifest.json:generic-api-key:14
