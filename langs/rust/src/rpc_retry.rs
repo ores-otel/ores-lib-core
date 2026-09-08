@@ -48,7 +48,11 @@ pub struct RetryDecision {
 }
 
 fn stop(reason: RetryReason) -> RetryDecision {
-    RetryDecision { retry: false, delay_ms: 0, reason }
+    RetryDecision {
+        retry: false,
+        delay_ms: 0,
+        reason,
+    }
 }
 
 /// Returns a plan after a failed attempt; never sleeps, performs I/O, mutates state, or logs.
@@ -62,19 +66,41 @@ pub fn plan_rpc_retry(policy: &RetryPolicy, attempt: &RetryAttempt) -> RetryDeci
         && attempt.elapsed_ms <= 3_600_000
         && attempt.code <= 16
         && attempt.jitter_permille <= 1000
-        && attempt.retry_after_ms.map_or(true, |minimum| minimum <= 3_600_000);
-    if !valid { return stop(RetryReason::InvalidInput); }
-    if attempt.cancelled { return stop(RetryReason::Cancelled); }
-    if !attempt.replay_safe { return stop(RetryReason::UnsafeReplay); }
-    if attempt.attempts_completed >= policy.max_attempts { return stop(RetryReason::AttemptsExhausted); }
-    if attempt.elapsed_ms >= policy.timeout_ms { return stop(RetryReason::DeadlineExhausted); }
-    if !matches!(attempt.code, 8 | 14) { return stop(RetryReason::NonRetryable); }
+        && attempt
+            .retry_after_ms
+            .map_or(true, |minimum| minimum <= 3_600_000);
+    if !valid {
+        return stop(RetryReason::InvalidInput);
+    }
+    if attempt.cancelled {
+        return stop(RetryReason::Cancelled);
+    }
+    if !attempt.replay_safe {
+        return stop(RetryReason::UnsafeReplay);
+    }
+    if attempt.attempts_completed >= policy.max_attempts {
+        return stop(RetryReason::AttemptsExhausted);
+    }
+    if attempt.elapsed_ms >= policy.timeout_ms {
+        return stop(RetryReason::DeadlineExhausted);
+    }
+    if !matches!(attempt.code, 8 | 14) {
+        return stop(RetryReason::NonRetryable);
+    }
     // Validation above bounds the shift to 0..=7 and every product below u32::MAX.
-    let cap = policy.max_backoff_ms.min(policy.initial_backoff_ms * (1 << (attempt.attempts_completed - 1)));
+    let cap = policy
+        .max_backoff_ms
+        .min(policy.initial_backoff_ms * (1 << (attempt.attempts_completed - 1)));
     let jittered = cap * attempt.jitter_permille / 1000;
     let delay_ms = jittered.max(attempt.retry_after_ms.unwrap_or(0));
-    if delay_ms >= policy.timeout_ms - attempt.elapsed_ms { return stop(RetryReason::DeadlineExhausted); }
-    RetryDecision { retry: true, delay_ms, reason: RetryReason::Retry }
+    if delay_ms >= policy.timeout_ms - attempt.elapsed_ms {
+        return stop(RetryReason::DeadlineExhausted);
+    }
+    RetryDecision {
+        retry: true,
+        delay_ms,
+        reason: RetryReason::Retry,
+    }
 }
 
 /// ORM-neutral semantic categories. Diesel/SeaORM adapters classify typed errors server-side;
