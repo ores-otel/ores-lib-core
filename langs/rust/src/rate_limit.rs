@@ -347,7 +347,7 @@ pub fn validate_metric_attribute(name: &str) -> Result<(), TelemetryError> {
 pub fn is_forbidden_attribute(name: &str) -> bool {
     let normalized = name.to_ascii_lowercase().replace('-', "_");
     let leaf = normalized
-        .rsplit(|character| matches!(character, '.' | '/' | ':'))
+        .rsplit(['.', '/', ':'])
         .next()
         .unwrap_or(normalized.as_str());
     FORBIDDEN_ATTRIBUTE_ROOTS.iter().any(|forbidden| {

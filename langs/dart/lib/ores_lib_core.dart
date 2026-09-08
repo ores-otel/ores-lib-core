@@ -46,19 +46,20 @@ final class Secret<T> {
 }
 
 String normalizeEmailForRevocation(String value) {
-  final normalized = value
+  final trimmed = value
       .replaceFirst(RegExp(r'^[ \t\r\n]+'), '')
-      .replaceFirst(RegExp(r'[ \t\r\n]+$'), '')
-      .toLowerCase();
-  if (normalized.isEmpty) {
+      .replaceFirst(RegExp(r'[ \t\r\n]+$'), '');
+  if (trimmed.isEmpty) {
     throw const FormatException('email is empty');
   }
-  if (normalized.length > 320) {
+  if (trimmed.length > 320) {
     throw const FormatException('email is too long');
   }
-  if (normalized.codeUnits.any((value) => value > 127)) {
+  // Reject before case folding: U+212A would otherwise become ASCII "k".
+  if (trimmed.codeUnits.any((value) => value > 127)) {
     throw const FormatException('email must be ASCII');
   }
+  final normalized = trimmed.toLowerCase();
   final parts = normalized.split('@');
   if (parts.length != 2 || parts[0].isEmpty || parts[1].isEmpty) {
     throw const FormatException('email structure is invalid');
@@ -162,17 +163,22 @@ List<String> authorizedOrganizations(
 
 enum IdempotencyDisposition { newRequest, replay, conflict }
 
+void _validateDigest(List<int> digest, String side) {
+  if (digest.length != 32) {
+    throw FormatException('$side digest must contain 32 bytes');
+  }
+  if (digest.any((value) => value < 0 || value > 255)) {
+    throw FormatException('$side digest elements must be bytes');
+  }
+}
+
 IdempotencyDisposition classifyIdempotency(
     List<int>? existingRequestDigest, List<int> incomingRequestDigest) {
-  if (incomingRequestDigest.length != 32) {
-    throw const FormatException('incoming digest must contain 32 bytes');
-  }
+  _validateDigest(incomingRequestDigest, 'incoming');
   if (existingRequestDigest == null) {
     return IdempotencyDisposition.newRequest;
   }
-  if (existingRequestDigest.length != 32) {
-    throw const FormatException('existing digest must contain 32 bytes');
-  }
+  _validateDigest(existingRequestDigest, 'existing');
   var difference = 0;
   for (var index = 0; index < existingRequestDigest.length; index += 1) {
     difference |= existingRequestDigest[index] ^ incomingRequestDigest[index];
