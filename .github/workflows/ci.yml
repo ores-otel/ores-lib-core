@@ -46,9 +46,13 @@ jobs:
           case "$LANGUAGE" in
             rust) (cd "$root" && cargo test) ;;
             go) (cd "$root" && go test ./...) ;;
-            typescript) (cd "$root" && npm test) ;;
+            typescript) (cd "$root" && npm test && node --test test/validation-boundaries.test.js) ;;
             python) (cd "$root" && PYTHONPATH=src python -m unittest discover -s tests -v) ;;
-            dart) (cd "$root" && dart pub get && dart analyze && dart run tool/check.dart && dart run tool/rpc_retry_check.dart) ;;
+            dart)
+              (cd "$root" && dart pub get && dart analyze && dart run tool/check.dart && dart run tool/rpc_retry_check.dart && dart run tool/validation_boundaries.dart)
+              (cd "$root" && dart compile js tool/validation_boundaries.dart -o "$RUNNER_TEMP/validation-boundaries.js")
+              node -e 'globalThis.self = globalThis; require(process.argv[1]);' "$RUNNER_TEMP/validation-boundaries.js"
+              ;;
             java)
               mkdir -p "$RUNNER_TEMP/java"
               if [ -f "$root/src/main/java/com/oresoftware/interfaces/AuthContracts.java" ]; then

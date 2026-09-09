@@ -7,10 +7,12 @@ export class Secret { #value; constructor(value) { this.#value = value; } expose
 
 export function normalizeEmailForRevocation(value) {
   if (typeof value !== "string") throw new TypeError("email must be a string");
-  const normalized = value.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "").toLowerCase();
-  if (normalized.length === 0) throw new TypeError("email is empty");
-  if (normalized.length > 320) throw new TypeError("email is too long");
-  if (!/^[\x00-\x7F]+$/.test(normalized)) throw new TypeError("email must be ASCII");
+  const trimmed = value.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+  if (trimmed.length === 0) throw new TypeError("email is empty");
+  if (trimmed.length > 320) throw new TypeError("email is too long");
+  // Reject before case folding: U+212A would otherwise become ASCII "k".
+  if (!/^[\x00-\x7F]+$/.test(trimmed)) throw new TypeError("email must be ASCII");
+  const normalized = trimmed.toLowerCase();
   const parts = normalized.split("@");
   if (parts.length !== 2 || parts[0].length === 0 || parts[1].length === 0) throw new TypeError("email structure is invalid");
   const [local, domain] = parts;
