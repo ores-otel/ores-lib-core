@@ -1,0 +1,16 @@
+[package]
+name = "ores-lib-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+license = "MIT"
+description = "Security-oriented core helpers for OreSoftware Rust services"
+repository = "https://github.com/ores-otel/ores-lib-core"
+
+[features]
+default = ["read-only"]
+read-only = []
+read-write = ["read-only"]
+
+[lib]
+path = "src/lib.rs"
