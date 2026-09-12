@@ -16,27 +16,42 @@ const generatedName = (kind, table, detail) => `ores_${kind}_${sha256(JSON.strin
 const sqlScalar = Object.freeze({ string: "TEXT", uuid: "UUID", int32: "INTEGER", boolean: "BOOLEAN" });
 const deleteAction = Object.freeze({ noAction: "NO ACTION", restrict: "RESTRICT", cascade: "CASCADE", setNull: "SET NULL" });
 
+// Every generated relation name, in emission order (table constraints first, then
+// indexes). Foreign-key names are not relations and are not checked.
+const generatedRelationNames = (ir) => [
+  ...ir.entities.flatMap((entity) => [
+    generatedName("pk", entity.table, entity.primaryKey),
+    ...entity.uniqueKeys.map((key) => generatedName("uq", entity.table, key)),
+  ]),
+  ...ir.entities.flatMap((entity) => entity.indexes.map((key) => generatedName("idx", entity.table, key))),
+];
+// Declared tables are already unique, so any repeat in the combined list is a
+// generated name colliding with a table or with another generated name. Checked
+// once as a value instead of threading a growing set through the emitters.
+function assertNoRelationCollision(ir) {
+  const declared = ir.entities.map((entity) => entity.table);
+  const generated = generatedRelationNames(ir);
+  if (new Set([...declared, ...generated]).size !== declared.length + generated.length) throw new IrValidationError("NAME_COLLISION", "/entities", "Generated relation name collides with a declared relation.");
+}
+function columnDeclaration(field) {
+  const name = quote(field.column);
+  const checks = [
+    field.minLength === undefined ? null : `char_length(${name}) >= ${field.minLength}`,
+    field.maxLength === undefined ? null : `char_length(${name}) <= ${field.maxLength}`,
+    field.minimum === undefined ? null : `${name} >= ${field.minimum}`,
+    field.maximum === undefined ? null : `${name} <= ${field.maximum}`,
+  ].filter((check) => check !== null);
+  return `  ${name} ${sqlScalar[field.type]}${field.nullable ? "" : " NOT NULL"}${checks.length ? ` CHECK (${checks.join(" AND ")})` : ""}`;
+}
 function emitSql(ir) {
-  const relations = new Set(ir.entities.map((entity) => entity.table));
-  const relationName = (kind, table, detail) => {
-    const name = generatedName(kind, table, detail);
-    if (relations.has(name)) throw new IrValidationError("NAME_COLLISION", "/entities", "Generated relation name collides with a declared relation.");
-    relations.add(name);
-    return quote(name);
-  };
+  assertNoRelationCollision(ir);
+  const relationName = (kind, table, detail) => quote(generatedName(kind, table, detail));
   const tables = ir.entities.map((entity) => {
-    const declarations = entity.fields.map((field) => {
-      const name = quote(field.column);
-      const checks = [
-        field.minLength === undefined ? null : `char_length(${name}) >= ${field.minLength}`,
-        field.maxLength === undefined ? null : `char_length(${name}) <= ${field.maxLength}`,
-        field.minimum === undefined ? null : `${name} >= ${field.minimum}`,
-        field.maximum === undefined ? null : `${name} <= ${field.maximum}`,
-      ].filter((check) => check !== null);
-      return `  ${name} ${sqlScalar[field.type]}${field.nullable ? "" : " NOT NULL"}${checks.length ? ` CHECK (${checks.join(" AND ")})` : ""}`;
-    });
-    declarations.push(`  CONSTRAINT ${relationName("pk", entity.table, entity.primaryKey)} PRIMARY KEY (${columns(entity, entity.primaryKey)})`);
-    for (const key of entity.uniqueKeys) declarations.push(`  CONSTRAINT ${relationName("uq", entity.table, key)} UNIQUE (${columns(entity, key)})`);
+    const declarations = [
+      ...entity.fields.map(columnDeclaration),
+      `  CONSTRAINT ${relationName("pk", entity.table, entity.primaryKey)} PRIMARY KEY (${columns(entity, entity.primaryKey)})`,
+      ...entity.uniqueKeys.map((key) => `  CONSTRAINT ${relationName("uq", entity.table, key)} UNIQUE (${columns(entity, key)})`),
+    ];
     return `CREATE TABLE ${sqlName(ir, entity)} (\n${declarations.join(",\n")}\n);`;
   });
   // Foreign keys follow ALL table declarations: self-references and cycles are valid.
@@ -47,14 +62,17 @@ function emitSql(ir) {
   const indexes = ir.entities.flatMap((entity) => entity.indexes.map((key) => `CREATE INDEX ${relationName("idx", entity.table, key)} ON ${sqlName(ir, entity)} (${columns(entity, key)});`));
   return ["-- Generated desired state, NOT an executable migration plan.", "-- Schema provisioning, RLS, grants, triggers, defaults and backfills remain external.", "-- No CREATE/ALTER/DROP is executed by this compiler.", "", [...tables, ...references, ...indexes].join("\n\n"), ""].join("\n");
 }
+// Built as one object literal; later spreads win, mirroring the previous successive assignments.
 function propertySchema(field) {
   const type = field.type === "int32" ? "integer" : field.type === "boolean" ? "boolean" : "string";
-  const result = { type: field.nullable ? [type, "null"] : type };
-  if (field.type === "uuid") Object.assign(result, { format: "uuid", pattern: UUID_PATTERN, minLength: 36, maxLength: 36 });
-  if (field.type === "string") result.pattern = "^[^\\u0000]*$"; // PostgreSQL TEXT cannot store NUL.
-  if (field.type === "int32") Object.assign(result, { minimum: field.minimum ?? -2147483648, maximum: field.maximum ?? 2147483647 });
-  for (const key of ["minLength", "maxLength"]) if (field[key] !== undefined) result[key] = field[key];
-  return result;
+  return {
+    type: field.nullable ? [type, "null"] : type,
+    ...(field.type === "uuid" ? { format: "uuid", pattern: UUID_PATTERN, minLength: 36, maxLength: 36 } : {}),
+    ...(field.type === "string" ? { pattern: "^[^\\u0000]*$" } : {}), // PostgreSQL TEXT cannot store NUL.
+    ...(field.type === "int32" ? { minimum: field.minimum ?? -2147483648, maximum: field.maximum ?? 2147483647 } : {}),
+    ...(field.minLength !== undefined ? { minLength: field.minLength } : {}),
+    ...(field.maxLength !== undefined ? { maxLength: field.maxLength } : {}),
+  };
 }
 function emitJsonSchema(ir, entity) {
   return json({ $schema: "https://json-schema.org/draft/2020-12/schema", $id: `urn:ores:schema-ir:v1:${ir.databaseSchema}:${entity.name}`, title: entity.name, type: "object", additionalProperties: false, properties: Object.fromEntries(entity.fields.map((field) => [field.name, propertySchema(field)])), required: entity.fields.filter((field) => field.required).map((field) => field.name) });
@@ -86,11 +104,14 @@ function emitCue(ir) {
   const usesStrings = ir.entities.some((entity) => entity.fields.some((field) => field.minLength !== undefined || field.maxLength !== undefined));
   const constraint = (field) => {
     const base = field.type === "boolean" ? ["bool"] : field.type === "int32" ? ["int", `>=${field.minimum ?? -2147483648}`, `<=${field.maximum ?? 2147483647}`] : ["string"];
-    if (field.type === "uuid") base.push(`=~${JSON.stringify(UUID_PATTERN)}`);
-    if (field.type === "string") base.push('!~"\\\\x00"');
-    if (field.minLength !== undefined) base.push(`strings.MinRunes(${field.minLength})`);
-    if (field.maxLength !== undefined) base.push(`strings.MaxRunes(${field.maxLength})`);
-    const value = base.join(" & ");
+    const terms = [
+      ...base,
+      ...(field.type === "uuid" ? [`=~${JSON.stringify(UUID_PATTERN)}`] : []),
+      ...(field.type === "string" ? ['!~"\\\\x00"'] : []),
+      ...(field.minLength !== undefined ? [`strings.MinRunes(${field.minLength})`] : []),
+      ...(field.maxLength !== undefined ? [`strings.MaxRunes(${field.maxLength})`] : []),
+    ];
+    const value = terms.join(" & ");
     return field.nullable ? `null | (${value})` : value;
   };
   return ["// Generated structural constraints. Relational integrity remains in PostgreSQL.", "package models", ...(usesStrings ? ['import "strings"'] : []), ...ir.entities.map((entity) => `#${entity.name}: {\n${entity.fields.map((field) => `  ${JSON.stringify(field.name)}${field.required ? "!" : "?"}: ${constraint(field)}`).join("\n")}\n}`), ""].join("\n\n");

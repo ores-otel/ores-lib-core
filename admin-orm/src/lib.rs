@@ -33,14 +33,19 @@ pub struct AdminDatabaseConfig<'a> {
 impl AdminDatabaseConfig<'_> {
     fn connect_options(&self) -> Result<ConnectOptions, AdminOrmError> {
         self.validate()?;
-        let mut options = ConnectOptions::new(self.database_url.to_owned());
-        options
-            .max_connections(MAX_CONNECTIONS)
-            .min_connections(1)
-            .connect_timeout(CONNECT_TIMEOUT)
-            .acquire_timeout(ACQUIRE_TIMEOUT)
-            .idle_timeout(IDLE_TIMEOUT)
-            .sqlx_logging(false);
+        // `ConnectOptions` is a `&mut self` builder imposed by SeaORM; the mutation is
+        // confined to this block and callers only ever see the finished value.
+        let options = {
+            let mut options = ConnectOptions::new(self.database_url.to_owned());
+            options
+                .max_connections(MAX_CONNECTIONS)
+                .min_connections(1)
+                .connect_timeout(CONNECT_TIMEOUT)
+                .acquire_timeout(ACQUIRE_TIMEOUT)
+                .idle_timeout(IDLE_TIMEOUT)
+                .sqlx_logging(false);
+            options
+        };
         Ok(options)
     }
 

@@ -20,11 +20,14 @@ export class IrValidationError extends Error {
 }
 const fail = (code, path, message) => { throw new IrValidationError(code, path, message); };
 
-function jsonValue(value, path, ancestors = new Set(), depth = 0, budget = { remaining: 100000 }) {
-  budget.remaining -= 1;
-  if (depth > 20 || budget.remaining < 0) fail("RESOURCE_LIMIT", path, "IR exceeds the depth or node limit.");
-  if (value === null || typeof value === "string" || typeof value === "boolean") return;
-  if (typeof value === "number" && Number.isFinite(value)) return;
+// Walks the input in document order and returns the node budget left after this
+// subtree. The budget is threaded through as a value (each child starts from what
+// its previous sibling left), so no shared counter is mutated across the recursion.
+function jsonValue(value, path, ancestors = new Set(), depth = 0, budget = 100000) {
+  const remaining = budget - 1;
+  if (depth > 20 || remaining < 0) fail("RESOURCE_LIMIT", path, "IR exceeds the depth or node limit.");
+  if (value === null || typeof value === "string" || typeof value === "boolean") return remaining;
+  if (typeof value === "number" && Number.isFinite(value)) return remaining;
   if (typeof value !== "object") fail("INVALID_JSON", path, "Expected a finite JSON value.");
   const prototype = Object.getPrototypeOf(value);
   if ((Array.isArray(value) && prototype !== Array.prototype) || (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null)) fail("INVALID_JSON", path, "Expected a plain JSON object.");
@@ -32,13 +35,14 @@ function jsonValue(value, path, ancestors = new Set(), depth = 0, budget = { rem
   const next = new Set([...ancestors, value]);
   const descriptors = Object.getOwnPropertyDescriptors(value);
   if (Array.isArray(value) && value.length > 10000) fail("RESOURCE_LIMIT", path, "Array exceeds the input limit.");
-  for (const key of Reflect.ownKeys(descriptors)) {
-    if (Array.isArray(value) && key === "length") continue;
+  const afterChildren = Reflect.ownKeys(descriptors).reduce((left, key) => {
+    if (Array.isArray(value) && key === "length") return left;
     if (typeof key !== "string" || !Object.hasOwn(descriptors[key], "value") || !descriptors[key].enumerable) fail("INVALID_JSON", path, "Only enumerable data properties are accepted.");
     if (Array.isArray(value) && !/^(0|[1-9][0-9]*)$/.test(key)) fail("INVALID_JSON", path, "Arrays cannot carry named properties.");
-    jsonValue(descriptors[key].value, `${path}/${key.replace(/~/g, "~0").replace(/\//g, "~1")}`, next, depth + 1, budget);
-  }
+    return jsonValue(descriptors[key].value, `${path}/${key.replace(/~/g, "~0").replace(/\//g, "~1")}`, next, depth + 1, left);
+  }, remaining);
   if (Array.isArray(value) && Object.keys(value).length !== value.length) fail("INVALID_JSON", path, "Sparse arrays are not JSON.");
+  return afterChildren;
 }
 
 function record(value, required, optional, path) {

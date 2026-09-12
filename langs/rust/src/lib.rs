@@ -3,6 +3,7 @@
 pub mod rate_limit;
 pub mod rpc_retry;
 
+use std::collections::BTreeSet;
 use std::fmt::{Debug, Display, Formatter};
 
 pub const REDACTED: &str = "[REDACTED]";
@@ -108,12 +109,12 @@ pub fn normalize_email_for_revocation(value: &str) -> Result<String, EmailNormal
         return Err(EmailNormalizationError::NonAscii);
     }
     let normalized = trimmed.to_ascii_lowercase();
-    let mut parts = normalized.split('@');
-    let local = parts.next().unwrap_or_default();
-    let domain = parts.next().unwrap_or_default();
-    if parts.next().is_some() || local.is_empty() || domain.is_empty() {
-        return Err(EmailNormalizationError::InvalidStructure);
-    }
+    // Exactly one '@' with a non-empty local part and domain; `split_once` yields the
+    // pair as a value instead of stepping a mutable iterator.
+    let (local, domain) = normalized
+        .split_once('@')
+        .filter(|(local, domain)| !local.is_empty() && !domain.is_empty() && !domain.contains('@'))
+        .ok_or(EmailNormalizationError::InvalidStructure)?;
     if local.len() > 64
         || local.starts_with('.')
         || local.ends_with('.')
@@ -205,16 +206,14 @@ pub fn authorized_directory_organizations(
     required_scope: &str,
     grants: &[DirectoryAdminGrant],
 ) -> Vec<String> {
-    let mut authorized: Vec<String> = grants
-        .iter()
-        .filter(|grant| grant.allows(required_scope))
-        .filter(|grant| grant.project_ids.is_none())
-        .filter(|grant| requested.map_or(true, |ids| ids.contains(&grant.organization_id)))
-        .map(|grant| grant.organization_id.clone())
-        .collect();
-    authorized.sort();
-    authorized.dedup();
-    authorized
+    sorted_unique(
+        grants
+            .iter()
+            .filter(|grant| grant.allows(required_scope))
+            .filter(|grant| grant.project_ids.is_none())
+            .filter(|grant| requested.map_or(true, |ids| ids.contains(&grant.organization_id)))
+            .map(|grant| grant.organization_id.clone()),
+    )
 }
 
 /// Returns the sorted, de-duplicated intersection only. Callers must not expose rejected IDs.
@@ -222,15 +221,19 @@ pub fn authorized_organizations(
     requested: Option<&[String]>,
     grants: &[RevocationGrant],
 ) -> Vec<String> {
-    let mut authorized: Vec<String> = grants
-        .iter()
-        .filter(|grant| grant.sessions_revoke)
-        .filter(|grant| requested.map_or(true, |ids| ids.contains(&grant.organization_id)))
-        .map(|grant| grant.organization_id.clone())
-        .collect();
-    authorized.sort();
-    authorized.dedup();
-    authorized
+    sorted_unique(
+        grants
+            .iter()
+            .filter(|grant| grant.sessions_revoke)
+            .filter(|grant| requested.map_or(true, |ids| ids.contains(&grant.organization_id)))
+            .map(|grant| grant.organization_id.clone()),
+    )
+}
+
+/// The sorted, de-duplicated form of `ids` as a new vector. Collecting through a
+/// `BTreeSet` gives the same order as `sort` + `dedup` without a mutable accumulator.
+fn sorted_unique(ids: impl Iterator<Item = String>) -> Vec<String> {
+    ids.collect::<BTreeSet<String>>().into_iter().collect()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -333,8 +336,10 @@ mod tests {
             vec!["10000000-0000-4000-8000-000000000001".to_string()]
         );
         assert!(authorized_directory_organizations(None, "directory.*", &grants).is_empty());
-        let mut project_bounded = grants[0].clone();
-        project_bounded.project_ids = Some(vec!["30000000-0000-4000-8000-000000000001".into()]);
+        let project_bounded = DirectoryAdminGrant {
+            project_ids: Some(vec!["30000000-0000-4000-8000-000000000001".into()]),
+            ..grants[0].clone()
+        };
         assert!(authorized_directory_organizations(
             None,
             DIRECTORY_REVOCATIONS_EXECUTE_SCOPE,

@@ -63,7 +63,7 @@ void main() {
     rejects(() => classifyIdempotency(null, bad));
     rejects(() => classifyIdempotency(bad, zero));
   }
-  for (var index = 0; index < 32; index += 1) {
+  for (final index in List<int>.generate(32, (position) => position)) {
     final changed = List<int>.of(zero)..[index] = 255;
     require(classifyIdempotency(zero, changed) ==
         IdempotencyDisposition.conflict, 'different digest');
