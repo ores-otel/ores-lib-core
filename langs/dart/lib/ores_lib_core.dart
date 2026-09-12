@@ -179,10 +179,13 @@ IdempotencyDisposition classifyIdempotency(
     return IdempotencyDisposition.newRequest;
   }
   _validateDigest(existingRequestDigest, 'existing');
-  var difference = 0;
-  for (var index = 0; index < existingRequestDigest.length; index += 1) {
-    difference |= existingRequestDigest[index] ^ incomingRequestDigest[index];
-  }
+  final existing = existingRequestDigest;
+  // A fold visits every byte regardless of where the first difference is, so the
+  // comparison stays constant-time without an accumulator variable.
+  final difference = Iterable<int>.generate(existing.length).fold<int>(
+      0,
+      (accumulated, index) =>
+          accumulated | (existing[index] ^ incomingRequestDigest[index]));
   return difference == 0
       ? IdempotencyDisposition.replay
       : IdempotencyDisposition.conflict;

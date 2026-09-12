@@ -3,7 +3,7 @@ package orescore
 import (
 	"crypto/subtle"
 	"errors"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -33,53 +33,44 @@ var sensitive = []string{
 	"voiceprint",
 }
 
+func lowerAlphanumeric(character rune) bool {
+	return (character >= 'a' && character <= 'z') ||
+		(character >= '0' && character <= '9')
+}
+
 func compactKey(value string) string {
-	var builder strings.Builder
-	for _, character := range strings.ToLower(strings.TrimSpace(value)) {
-		if (character >= 'a' && character <= 'z') ||
-			(character >= '0' && character <= '9') {
-			builder.WriteRune(character)
-		}
-	}
-	return builder.String()
+	return keepRunes(strings.ToLower(strings.TrimSpace(value)), lowerAlphanumeric)
 }
 
 func IsSensitiveField(key string) bool {
 	normalized := compactKey(key)
-	for _, field := range sensitive {
+	return slices.ContainsFunc(sensitive, func(field string) bool {
 		expected := compactKey(field)
-		if normalized == expected || strings.HasSuffix(normalized, expected) {
-			return true
-		}
-	}
-	return false
+		return normalized == expected || strings.HasSuffix(normalized, expected)
+	})
 }
 
+// RedactRecord returns a new record; the input map is never written to.
 func RedactRecord(input map[string]any) map[string]any {
-	out := make(map[string]any, len(input))
-	for key, value := range input {
+	return mapValues(input, func(key string, value any) any {
 		if IsSensitiveField(key) {
-			out[key] = Redacted
-		} else {
-			out[key] = value
+			return Redacted
 		}
-	}
-	return out
+		return value
+	})
+}
+
+func correlationIDRune(character rune) bool {
+	return (character >= 'a' && character <= 'z') ||
+		(character >= 'A' && character <= 'Z') ||
+		(character >= '0' && character <= '9') ||
+		strings.ContainsRune("._:-", character)
 }
 
 func ValidCorrelationID(value string) bool {
-	if len(value) < 8 || len(value) > 128 {
-		return false
-	}
-	for _, character := range value {
-		if !((character >= 'a' && character <= 'z') ||
-			(character >= 'A' && character <= 'Z') ||
-			(character >= '0' && character <= '9') ||
-			strings.ContainsRune("._:-", character)) {
-			return false
-		}
-	}
-	return true
+	return len(value) >= 8 &&
+		len(value) <= 128 &&
+		strings.IndexFunc(value, func(character rune) bool { return !correlationIDRune(character) }) < 0
 }
 
 type SecurityLogSink interface {
@@ -94,10 +85,8 @@ func NormalizeEmailForRevocation(value string) (string, error) {
 	if len(trimmed) > 320 {
 		return "", errors.New("email is too long")
 	}
-	for _, value := range []byte(trimmed) {
-		if value > 127 {
-			return "", errors.New("email must be ASCII")
-		}
+	if !allBytes(trimmed, asciiByte) {
+		return "", errors.New("email must be ASCII")
 	}
 
 	normalized := strings.ToLower(trimmed)
@@ -110,25 +99,20 @@ func NormalizeEmailForRevocation(value string) (string, error) {
 		len(local) > 64 ||
 		strings.HasPrefix(local, ".") ||
 		strings.HasSuffix(local, ".") ||
-		strings.Contains(local, "..") {
+		strings.Contains(local, "..") ||
+		!allBytes(local, validEmailLocalByte) {
 		return "", errors.New("email local part is invalid")
-	}
-	for _, value := range []byte(local) {
-		if !validEmailLocalByte(value) {
-			return "", errors.New("email local part is invalid")
-		}
 	}
 
 	labels := strings.Split(domain, ".")
-	if len(domain) > 255 || len(labels) < 2 {
+	if len(domain) > 255 || len(labels) < 2 || !allSlice(labels, validDomainLabel) {
 		return "", errors.New("email domain is invalid")
 	}
-	for _, label := range labels {
-		if !validDomainLabel(label) {
-			return "", errors.New("email domain is invalid")
-		}
-	}
 	return normalized, nil
+}
+
+func asciiByte(value byte) bool {
+	return value <= 127
 }
 
 func validEmailLocalByte(value byte) bool {
@@ -138,21 +122,18 @@ func validEmailLocalByte(value byte) bool {
 	return strings.ContainsRune(".!#$%&'*+-/=?^_`{|}~", rune(value))
 }
 
+func validDomainLabelByte(value byte) bool {
+	return (value >= 'a' && value <= 'z') ||
+		(value >= '0' && value <= '9') ||
+		value == '-'
+}
+
 func validDomainLabel(label string) bool {
-	if len(label) == 0 ||
-		len(label) > 63 ||
-		strings.HasPrefix(label, "-") ||
-		strings.HasSuffix(label, "-") {
-		return false
-	}
-	for _, value := range []byte(label) {
-		if !((value >= 'a' && value <= 'z') ||
-			(value >= '0' && value <= '9') ||
-			value == '-') {
-			return false
-		}
-	}
-	return true
+	return len(label) != 0 &&
+		len(label) <= 63 &&
+		!strings.HasPrefix(label, "-") &&
+		!strings.HasSuffix(label, "-") &&
+		allBytes(label, validDomainLabelByte)
 }
 
 type EmailLookupHMAC interface {
@@ -179,25 +160,28 @@ type DirectoryGrant struct {
 }
 
 func (grant DirectoryGrant) Allows(requiredScope string) bool {
-	if strings.Contains(requiredScope, "*") {
-		return false
-	}
-	hasRole := false
-	for _, role := range grant.Roles {
-		if role == DirectoryAdminRole {
-			hasRole = true
-			break
-		}
-	}
-	if !hasRole {
-		return false
-	}
-	for _, scope := range grant.Scopes {
-		if scope == requiredScope {
+	return !strings.Contains(requiredScope, "*") &&
+		slices.Contains(grant.Roles, DirectoryAdminRole) &&
+		slices.Contains(grant.Scopes, requiredScope)
+}
+
+// projectBounded reports whether the grant is limited to projects; such grants
+// must never be elevated to organization-wide authority.
+func (grant DirectoryGrant) projectBounded() bool {
+	return grant.ProjectIDs != nil
+}
+
+// requestedFilter returns the organization predicate encoded by a request: a nil
+// request admits every organization, any other request admits only its members.
+func requestedFilter(requested []string) func(string) bool {
+	requestedSet := setOf(requested)
+	return func(organizationID string) bool {
+		if requestedSet == nil {
 			return true
 		}
+		_, ok := requestedSet[organizationID]
+		return ok
 	}
-	return false
 }
 
 func AuthorizedDirectoryOrganizations(
@@ -205,65 +189,26 @@ func AuthorizedDirectoryOrganizations(
 	requiredScope string,
 	grants []DirectoryGrant,
 ) []string {
-	var requestedSet map[string]struct{}
-	if requested != nil {
-		requestedSet = make(map[string]struct{}, len(requested))
-		for _, id := range requested {
-			requestedSet[id] = struct{}{}
-		}
-	}
-	authorizedSet := map[string]struct{}{}
-	for _, grant := range grants {
-		if !grant.Allows(requiredScope) {
-			continue
-		}
-		if grant.ProjectIDs != nil {
-			continue
-		}
-		if requestedSet != nil {
-			if _, ok := requestedSet[grant.OrganizationID]; !ok {
-				continue
-			}
-		}
-		authorizedSet[grant.OrganizationID] = struct{}{}
-	}
-	authorized := make([]string, 0, len(authorizedSet))
-	for id := range authorizedSet {
-		authorized = append(authorized, id)
-	}
-	sort.Strings(authorized)
-	return authorized
+	inRequest := requestedFilter(requested)
+	authorized := filterSlice(grants, func(grant DirectoryGrant) bool {
+		return grant.Allows(requiredScope) &&
+			!grant.projectBounded() &&
+			inRequest(grant.OrganizationID)
+	})
+	return sortedUnique(mapSlice(authorized, func(grant DirectoryGrant) string {
+		return grant.OrganizationID
+	}))
 }
 
 // AuthorizedOrganizations returns only the sorted authorized intersection.
 func AuthorizedOrganizations(requested []string, grants []RevocationGrant) []string {
-	var requestedSet map[string]struct{}
-	if requested != nil {
-		requestedSet = make(map[string]struct{}, len(requested))
-		for _, id := range requested {
-			requestedSet[id] = struct{}{}
-		}
-	}
-
-	authorizedSet := map[string]struct{}{}
-	for _, grant := range grants {
-		if !grant.SessionsRevoke {
-			continue
-		}
-		if requestedSet != nil {
-			if _, ok := requestedSet[grant.OrganizationID]; !ok {
-				continue
-			}
-		}
-		authorizedSet[grant.OrganizationID] = struct{}{}
-	}
-
-	authorized := make([]string, 0, len(authorizedSet))
-	for id := range authorizedSet {
-		authorized = append(authorized, id)
-	}
-	sort.Strings(authorized)
-	return authorized
+	inRequest := requestedFilter(requested)
+	authorized := filterSlice(grants, func(grant RevocationGrant) bool {
+		return grant.SessionsRevoke && inRequest(grant.OrganizationID)
+	})
+	return sortedUnique(mapSlice(authorized, func(grant RevocationGrant) string {
+		return grant.OrganizationID
+	}))
 }
 
 type IdempotencyDisposition string

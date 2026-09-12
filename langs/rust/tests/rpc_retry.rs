@@ -3,43 +3,44 @@ use ores_lib_core::rpc_retry::{
     RetryReason,
 };
 
+/// Checks one fixture row of the shared corpus against the Rust planner.
+fn assert_fixture_row(line: &str) {
+    let row: Vec<&str> = line.split(',').collect();
+    assert_eq!(row.len(), 15);
+    let number = |index: usize| row[index].parse::<u32>().expect("unsigned fixture integer");
+    let boolean = |index: usize| row[index].parse::<bool>().expect("fixture boolean");
+    let policy = RetryPolicy {
+        max_attempts: number(1),
+        timeout_ms: number(2),
+        initial_backoff_ms: number(3),
+        max_backoff_ms: number(4),
+    };
+    let attempt = RetryAttempt {
+        attempts_completed: number(5),
+        elapsed_ms: number(6),
+        code: number(7),
+        cancelled: boolean(8),
+        replay_safe: boolean(9),
+        jitter_permille: number(10),
+        retry_after_ms: if row[11].is_empty() {
+            None
+        } else {
+            Some(number(11))
+        },
+    };
+    let result = plan_rpc_retry(&policy, &attempt);
+    assert_eq!(
+        (result.retry, result.delay_ms, result.reason as u32),
+        (boolean(12), number(13), number(14)),
+        "{}",
+        row[0]
+    );
+}
+
 #[test]
 fn cross_runtime_conformance_corpus() {
     let csv = include_str!("../../../contracts/rpc-retry-v1.csv");
-    let mut count = 0;
-    for line in csv.lines().skip(1) {
-        let row: Vec<&str> = line.split(',').collect();
-        assert_eq!(row.len(), 15);
-        let number = |index: usize| row[index].parse::<u32>().expect("unsigned fixture integer");
-        let boolean = |index: usize| row[index].parse::<bool>().expect("fixture boolean");
-        let policy = RetryPolicy {
-            max_attempts: number(1),
-            timeout_ms: number(2),
-            initial_backoff_ms: number(3),
-            max_backoff_ms: number(4),
-        };
-        let attempt = RetryAttempt {
-            attempts_completed: number(5),
-            elapsed_ms: number(6),
-            code: number(7),
-            cancelled: boolean(8),
-            replay_safe: boolean(9),
-            jitter_permille: number(10),
-            retry_after_ms: if row[11].is_empty() {
-                None
-            } else {
-                Some(number(11))
-            },
-        };
-        let result = plan_rpc_retry(&policy, &attempt);
-        assert_eq!(
-            (result.retry, result.delay_ms, result.reason as u32),
-            (boolean(12), number(13), number(14)),
-            "{}",
-            row[0]
-        );
-        count += 1;
-    }
+    let count = csv.lines().skip(1).map(assert_fixture_row).count();
     assert!(count >= 50, "the corpus must not be silently emptied");
 }
 

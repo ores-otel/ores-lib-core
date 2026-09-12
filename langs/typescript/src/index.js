@@ -46,7 +46,8 @@ export function classifyIdempotency(existingRequestDigest, incomingRequestDigest
   if (existingRequestDigest === undefined) return "new";
   if (!(existingRequestDigest instanceof Uint8Array) || existingRequestDigest.length !== 32) throw new TypeError("existing digest must be a 32-byte Uint8Array");
   if (existingRequestDigest.length !== incomingRequestDigest.length) return "conflict";
-  let difference = 0;
-  for (let index = 0; index < existingRequestDigest.length; index += 1) difference |= existingRequestDigest[index] ^ incomingRequestDigest[index];
+  // A fold visits every byte regardless of where the first difference is, so the
+  // comparison stays constant-time without an accumulator variable.
+  const difference = existingRequestDigest.reduce((acc, byte, index) => acc | (byte ^ incomingRequestDigest[index]), 0);
   return difference === 0 ? "replay" : "conflict";
 }
