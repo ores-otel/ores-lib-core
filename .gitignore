@@ -12,6 +12,7 @@ build/
 .zed/
 zed_modules/
 .vendor/.zed/
+.ores/
 
 # --- environment / secrets (sops + age) -------------------------------------
 # Only env/enc/*.env.enc is tracked. Every plaintext form stays out of git;
