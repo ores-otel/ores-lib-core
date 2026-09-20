@@ -1,0 +1,14 @@
+{
+  "schema": "ores.conformance.bootstrap/v1",
+  "repository": "ores-otel/ores-lib-core",
+  "id": "authority-boundary",
+  "contractRoot": "contracts/",
+  "status": "bootstrap-only",
+  "expected": {
+    "contractsRemainAuthoritative": true,
+    "conformanceIsSharedAcrossImplementations": true,
+    "runtimeSpecificGoldensAllowed": false,
+    "staleEvidenceAccepted": false,
+    "missingRequiredRuntimeEvidenceAccepted": false
+  }
+}
