@@ -209,18 +209,33 @@ class LanguageLayoutContractTests(unittest.TestCase):
                         f"legacy top-level language directory returned: {legacy}",
                     )
 
-    def test_languages_alias_does_not_compete_with_langs(self) -> None:
+    def test_languages_alias_does_not_compete_as_runtime_collection(self) -> None:
         for manifest in self.manifests:
+            targets = target_directories(manifest)
             grouped_under_langs = any(
-                PurePosixPath(raw_directory).parts
+                target_name in LANGUAGE_TARGETS
+                and PurePosixPath(raw_directory).parts
                 and PurePosixPath(raw_directory).parts[0] == "langs"
-                for _, raw_directory in target_directories(manifest)
+                for target_name, raw_directory in targets
             )
-            if grouped_under_langs:
-                with self.subTest(manifest=relative_manifest(manifest)):
-                    self.assertFalse(
-                        (manifest.parent / "languages").exists(),
-                        "use the canonical langs/ name, not a competing languages/ tree",
+            if not grouped_under_langs:
+                continue
+
+            for target_name, raw_directory in targets:
+                if target_name not in LANGUAGE_TARGETS or raw_directory == ".":
+                    continue
+                path = PurePosixPath(raw_directory)
+                if not path.parts:
+                    continue
+                with self.subTest(
+                    manifest=relative_manifest(manifest),
+                    target=target_name,
+                    directory=raw_directory,
+                ):
+                    self.assertNotEqual(
+                        path.parts[0],
+                        "languages",
+                        "languages/ may host tooling but must not compete as a runtime language collection",
                     )
 
     def test_workflows_do_not_restore_legacy_working_directories(self) -> None:
