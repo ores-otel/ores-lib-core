@@ -8,7 +8,7 @@
   "evidenceScope": "repository-local-canary-only",
   "validator": {
     "repository": "ORESoftware/typespec-json-schema-validator",
-    "actionCommit": "c745036456dd80408b83217118b8563edb8f6abd",
+    "actionCommit": "bd503465dab8c5148fee722b443ed04ff126c9bf",
     "contractIrSchema": "ores.typespec-json-schema-validator.contract-ir/v1"
   },
   "authorityModel": {
