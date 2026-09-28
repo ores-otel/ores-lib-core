@@ -31,11 +31,23 @@ sops-private*.txt
 tmp/
 temp/
 # Repository-local temporary data and authorized Git worktrees
-tmp
-temp
 tmp/worktrees
 temp/worktrees
 # >>> ores fleet hygiene — managed block, edits below are overwritten >>>
 tmp/temp/
 tmp/worktrees/
 # <<< ores fleet hygiene <<<
+
+# ORESoftware SOPS dotenv ignore contract (ORESoftware/.github docs/sops-environment-standard.md)
+*.env
+*/*.env
+*/**/*.env
+.env.*
+*.env.*
+!.env.example
+
+/env/dec/
+
+/env/enc/*
+!/env/enc/dev.env.enc
+!/env/enc/prod.env.enc
