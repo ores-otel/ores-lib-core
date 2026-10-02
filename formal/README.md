@@ -24,9 +24,9 @@ Run the complete local slice with:
 
 ```sh
 python3 scripts/check_formal_assurance.py
-(cd languages/typescript && npm test)
-(cd languages/rust && cargo test)
-(cd languages/dart && dart pub get && dart run tool/formal_check.dart)
+(cd langs/typescript && npm test)
+(cd langs/rust && cargo test)
+(cd langs/dart && dart pub get && dart run tool/formal_check.dart)
 ```
 
 The canonical temporal models for telemetry buffering, retries, flush, and

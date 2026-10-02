@@ -12,7 +12,29 @@ build/
 .zed/
 zed_modules/
 .vendor/.zed/
+.ores/
 
+# --- environment / secrets (sops + age) -------------------------------------
+# Only env/enc/*.env.enc is tracked. Every plaintext form stays out of git;
+# `just env-check` enforces it. See env/README.md.
+*.env
+**/*.env
+env/dec/
+
+# age private keys — never commit these.
+*.agekey
+*.age-key
+keys.txt
+sops-private*.txt
+
+# Local temporary directories and repository-owned worktrees
+tmp/
+temp/
+# Repository-local temporary data and authorized Git worktrees
+tmp
+temp
+tmp/worktrees
+temp/worktrees
 # >>> ores fleet hygiene — managed block, edits below are overwritten >>>
 tmp/temp/
 tmp/worktrees/

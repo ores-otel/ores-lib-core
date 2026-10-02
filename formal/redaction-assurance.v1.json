@@ -42,16 +42,16 @@
   },
   "refinements": {
     "typescript": {
-      "source": "languages/typescript/src/index.js",
-      "check": "languages/typescript/test/formal_properties.test.js"
+      "source": "langs/typescript/src/index.js",
+      "check": "langs/typescript/test/formal_properties.test.js"
     },
     "rust": {
-      "source": "languages/rust/src/lib.rs",
-      "check": "languages/rust/tests/formal_properties.rs"
+      "source": "langs/rust/src/lib.rs",
+      "check": "langs/rust/tests/formal_properties.rs"
     },
     "dart": {
-      "source": "languages/dart/lib/ores_lib_core.dart",
-      "check": "languages/dart/tool/formal_check.dart"
+      "source": "langs/dart/lib/ores_lib_core.dart",
+      "check": "langs/dart/tool/formal_check.dart"
     }
   }
 }
