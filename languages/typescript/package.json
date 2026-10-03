@@ -4,6 +4,18 @@
   "type": "module",
   "main": "src/index.js",
   "types": "src/index.d.ts",
-  "scripts": {"test": "node --test test/*.test.js"},
-  "license": "MIT"
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "lint:ores": "if [ -f ../../.ores-lint/lint.sh ]; then sh ../../.ores-lint/lint.sh; else echo 'ores-lint not installed'; fi",
+    "prepublishOnly": "npm run lint:ores"
+  },
+  "license": "MIT",
+  "oresLint": {
+    "note": "Declared, not installed. ores-lint resolves these from a global install - see .ores-lint/README.md",
+    "requires": {
+      "eslint": ">=9",
+      "typescript-eslint": ">=8 (optional; without it .ts files are skipped)"
+    },
+    "install": "npm i -g eslint typescript-eslint"
+  }
 }
