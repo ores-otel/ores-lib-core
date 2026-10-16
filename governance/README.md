@@ -5,7 +5,7 @@ This directory binds the canonical `ores-lib-core` repository structure to its c
 The governed surfaces are intentionally distinct:
 
 - `langs/*` — publishable/runtime language implementations.
-- `languages/typescript` — schema-IR/compiler tooling; it is not a second TypeScript runtime package.
+- `langs/typescript` — schema-IR/compiler tooling; it is not a second TypeScript runtime package.
 - `admin-orm` — private/server-only ORM implementation and not a public package target.
 - `database/postgres` — database/schema target.
 - `contracts/dependencies.json` — dependency/security policy mirrored by `.zpkg.toml`.

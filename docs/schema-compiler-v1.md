@@ -118,7 +118,7 @@ are future conformance gates, not inferred from successful code generation.
 
 ## Tests and provenance
 
-From `languages/typescript`:
+From `langs/typescript`:
 
 ```sh
 node --test test/schema-compiler.test.js
