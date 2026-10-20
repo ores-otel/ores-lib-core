@@ -80,3 +80,21 @@ The dependency graph is acyclic: `ores-interfaces` is foundational and therefore
 depend on logging; `next-loggers` (the Zed package published by the `ores.otel.log` repo)
 imports those contracts; `ores-lib-core` imports both contracts and the injectable logger
 package.
+
+
+### Bounded quota/admission metric labels
+
+`scripts/admit-rate-limit-metric.mjs` implements a pure, fail-closed admission
+boundary for the **existing v1** independently-authored metric contract under
+`contracts/rate-limit-telemetry-v1.json`. It validates metric-specific label
+allowlists and declared enum vocabularies, rejects request/user/tenant/session
+identifiers and tracing fingerprints, requires the configured static policy-ID
+vocabulary, and returns a frozen projection rather than forwarding a mutable
+caller dictionary.
+
+This is a **reference adapter**, not an instrumented production OpenTelemetry
+SDK and not proof of end-to-end emission. Consumers must inject the exact
+verified contract, configure bounded policy IDs at startup, and pass validated
+attributes only. Do not use dynamic routes or identities as metric labels.
+The broader #33 instrumentation matrix, observed concurrency measurements,
+backend latency and cross-runtime conformance remain separate deliverables.
