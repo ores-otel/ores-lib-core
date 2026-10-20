@@ -55,3 +55,32 @@ test("metric runtime fails closed on corrupted contract authority", () => {
   reject(decision, policyIds, "constructor");
   assert.throws(() => admit({}, "decisions", decision, policyIds), TypeError);
 });
+
+test("malformed v1 contract cannot widen metric privacy or policy cardinality", () => {
+  const modify = (key, value) => {
+    const c = structuredClone(authority);
+    Object.assign(c.cardinality, { [key]: value });
+    assert.throws(() => admit(c, "decisions", decision, policyIds), TypeError);
+  };
+  modify("policyIdMaxUtf8Bytes", 9000);
+  modify("policyIdIsStaticConfiguration", false);
+  modify("dynamicRouteLabelsAllowed", true);
+  modify("principalFingerprintAllowedInMetrics", true);
+
+  const relaxed = structuredClone(authority);
+  relaxed.attributes.requiredDecision = [];
+  assert.throws(() => admit(relaxed, "decisions", decision, policyIds), TypeError);
+
+  const injected = structuredClone(authority);
+  injected.metrics.decisions.allowedAttributes.push("ores.rate_limit.user_id");
+  assert.throws(() => admit(injected, "decisions", decision, policyIds), TypeError);
+
+  const removedForbidden = structuredClone(authority);
+  removedForbidden.forbiddenAttributes = ["token"];
+  assert.throws(() => admit(removedForbidden, "decisions", decision, policyIds), TypeError);
+});
+test("rejects inherited prototype-carrying labels rather than trusting their appearance", () => {
+  const inherited = Object.create({ "ores.rate_limit.outcome": "deny" });
+  Object.assign(inherited, decision);
+  assert.throws(() => admit(authority, "decisions", inherited, policyIds), TypeError);
+});
