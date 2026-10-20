@@ -4,10 +4,8 @@
  * All metric labels must match the current independently-authored contract.
  */
 const record = (value) => value !== null && typeof value === "object"
-  && !Array.isArray(value) && Object.getPrototypeOf(value) !== null
-  ? Object.getPrototypeOf(value) === Object.prototype
-  : value !== null && typeof value === "object" && !Array.isArray(value)
-    && Object.getPrototypeOf(value) === null;
+  && !Array.isArray(value)
+  && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 const canonical = (value) => typeof value === "string" &&
   /^[a-z0-9][a-z0-9._-]*$/.test(value);
 
@@ -21,11 +19,59 @@ const ENUM_BY_SUFFIX = Object.freeze({
   retry_bucket: "retryBucket",
 });
 
+// A mutable or spoofed "authority" object must not relax our fixed, finite
+// attribute vocabulary. This is a v1-only guard, not a replacement for the
+// independently-authored JSON Schema / peer-authority checks.
+const REQUIRED_DECISION = Object.freeze([
+  "ores.rate_limit.policy_id",
+  "ores.rate_limit.layer",
+  "ores.rate_limit.algorithm",
+  "ores.rate_limit.outcome",
+  "ores.rate_limit.source",
+  "ores.rate_limit.principal_kind",
+]);
+const ALLOWED_ATTRIBUTE_NAMES = new Set([
+  ...REQUIRED_DECISION,
+  "ores.rate_limit.failure_mode",
+  "ores.rate_limit.retry_bucket",
+  "ores.rate_limit.observed_only",
+]);
+
+function trustedV1Contract(contract) {
+  const card = contract.cardinality;
+  const attr = contract.attributes;
+  return card.policyIdIsStaticConfiguration === true
+    && card.dynamicRouteLabelsAllowed === false
+    && card.principalFingerprintAllowedInMetrics === false
+    && card.policyIdMaxUtf8Bytes === 128
+    && Array.isArray(contract.forbiddenAttributes)
+    && ["authorization", "cookie", "email", "ip", "client_ip", "user_id",
+      "tenant_id", "session_id", "subject", "token", "principal", "principal_digest",
+      "rate_limit_key", "redis_key", "cache_key"].every((name) =>
+      contract.forbiddenAttributes.includes(name))
+    && Array.isArray(attr.traceOrLogOnly)
+    && attr.traceOrLogOnly.includes("ores.rate_limit.principal_fingerprint")
+    && attr.traceOrLogOnly.includes("trace_id")
+    && attr.traceOrLogOnly.includes("http.request_id")
+    && Array.isArray(attr.requiredDecision)
+    && REQUIRED_DECISION.length === attr.requiredDecision.length
+    && REQUIRED_DECISION.every((name) => attr.requiredDecision.includes(name))
+    && ["decisions", "backendErrors", "cacheEntries", "retryAfter"].every(
+      (name) => record(contract.metrics[name])
+        && Array.isArray(contract.metrics[name].allowedAttributes)
+        && contract.metrics[name].allowedAttributes.every((label) =>
+          ALLOWED_ATTRIBUTE_NAMES.has(label))
+    );
+}
+
 export function admitRateLimitMetricAttributes(contract, metricKey, attributes, policyIds) {
   if (!record(contract) || contract.schema !== "ores-otel/rate-limit-telemetry/v1"
       || !record(contract.metrics) || !record(contract.attributes)
       || !record(contract.enums) || !record(contract.cardinality)) {
     throw new TypeError("rate-limit telemetry authority is missing or invalid");
+  }
+  if (!trustedV1Contract(contract)) {
+    throw new TypeError("rate-limit telemetry contract violates fixed v1 privacy constraints");
   }
   if (!Array.isArray(policyIds) || policyIds.length === 0 || policyIds.length > 64
       || policyIds.some((id) => !canonical(id)
