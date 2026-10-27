@@ -78,6 +78,11 @@ test("malformed v1 contract cannot widen metric privacy or policy cardinality", 
   const removedForbidden = structuredClone(authority);
   removedForbidden.forbiddenAttributes = ["token"];
   assert.throws(() => admit(removedForbidden, "decisions", decision, policyIds), TypeError);
+
+  const widenedEnum = structuredClone(authority);
+  widenedEnum.enums.outcome.push("tenant-specific-outcome");
+  const widenedDecision = {...decision, "ores.rate_limit.outcome": "tenant-specific-outcome"};
+  assert.throws(() => admit(widenedEnum, "decisions", widenedDecision, policyIds), TypeError);
 });
 test("rejects inherited prototype-carrying labels rather than trusting their appearance", () => {
   const inherited = Object.create({ "ores.rate_limit.outcome": "deny" });

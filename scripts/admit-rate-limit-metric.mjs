@@ -18,6 +18,20 @@ const ENUM_BY_SUFFIX = Object.freeze({
   failure_mode: "failureMode",
   retry_bucket: "retryBucket",
 });
+const EXPECTED_ENUMS = Object.freeze({
+  layer: Object.freeze(["edge", "load_balancer", "service", "authentication", "data_store"]),
+  algorithm: Object.freeze(["token_bucket", "fixed_window", "sliding_window", "concurrency"]),
+  outcome: Object.freeze(["allow", "deny", "observe_only_overage", "bypass", "degraded_allow"]),
+  source: Object.freeze([
+    "cloudflare_binding", "cloudflare_deny_cache", "ingress_nginx", "envoy_local",
+    "traefik_local", "local_memory", "redis_authoritative", "redis_deny_cache", "data_store",
+  ]),
+  principalKind: Object.freeze([
+    "anonymous_ip", "authenticated_subject", "service_identity", "tenant", "composite",
+  ]),
+  failureMode: Object.freeze(["fail_open", "fail_closed", "local_fallback", "not_applicable"]),
+  retryBucket: Object.freeze(["none", "lt_1s", "1s_10s", "10s_60s", "1m_5m", "gt_5m"]),
+});
 
 // A mutable or spoofed "authority" object must not relax our fixed, finite
 // attribute vocabulary. This is a v1-only guard, not a replacement for the
@@ -56,6 +70,10 @@ function trustedV1Contract(contract) {
     && Array.isArray(attr.requiredDecision)
     && REQUIRED_DECISION.length === attr.requiredDecision.length
     && REQUIRED_DECISION.every((name) => attr.requiredDecision.includes(name))
+    && Object.entries(EXPECTED_ENUMS).every(([name, expected]) =>
+      Array.isArray(contract.enums[name])
+        && expected.length === contract.enums[name].length
+        && expected.every((value, index) => contract.enums[name][index] === value))
     && ["decisions", "backendErrors", "cacheEntries", "retryAfter"].every(
       (name) => record(contract.metrics[name])
         && Array.isArray(contract.metrics[name].allowedAttributes)
