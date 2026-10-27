@@ -51,3 +51,4 @@ tmp/worktrees/
 /env/enc/*
 !/env/enc/dev.env.enc
 !/env/enc/prod.env.enc
+tools/language-layout/target/

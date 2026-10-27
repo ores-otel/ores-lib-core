@@ -64,7 +64,7 @@ try {
   }
   if (!runtimeLanguages.length) throw new Error('runtime language set is empty');
 
-  await realDirectory('languages/typescript', 'schema compiler tooling lane');
+  await realDirectory('langs/typescript', 'schema compiler tooling lane');
   await realDirectory('admin-orm', 'admin ORM lane');
   await realDirectory('database/postgres', 'postgres lane');
 
@@ -110,7 +110,7 @@ try {
     repository: 'ores-otel/ores-lib-core',
     runtime_languages: runtimeLanguages,
     runtime_zpkg_targets: [...zpkg.targets].filter(([,dir]) => dir.startsWith('langs/')).map(([name]) => name).sort(),
-    tooling_lane: 'languages/typescript',
+    tooling_lane: 'langs/typescript',
     private_lane: 'admin-orm',
     database_lane: 'database/postgres',
     dependencies: [...contractDeps.keys()].sort(),

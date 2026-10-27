@@ -8,7 +8,7 @@ runtime security helpers, migrations, or the browser-safe package root.
 ## Use the dedicated Node entrypoint
 
 ```js
-import { compileSchemaIr } from "./languages/typescript/src/schema-ir/index.js";
+import { compileSchemaIr } from "./langs/typescript/src/schema-ir/index.js";
 
 const result = compileSchemaIr(input); // input is parsed JSON or another JSON value
 if (!result.ok) {
@@ -46,8 +46,8 @@ JavaScript-plus-TypeScript-declarations package layout. Existing Zed dependency
 resolution remains unchanged; no npm dependency or placeholder lock is added.
 
 ```sh
-node --test languages/typescript/test/schema-ir.test.js
-node --test languages/typescript/test/schema-ir-delete-policy.test.js
+node --test langs/typescript/test/schema-ir.test.js
+node --test langs/typescript/test/schema-ir-delete-policy.test.js
 ```
 
 The independent source-pinned fixture suite lives in `ores-otel-e2e/schema-ir`.
