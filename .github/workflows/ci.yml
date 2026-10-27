@@ -23,6 +23,8 @@ jobs:
           persist-credentials: false
       - run: python3 scripts/check_core.py
       - run: python3 scripts/check_rate_limit_telemetry.py
+      - name: Exercise bounded quota metric admission
+        run: node --test tests/admit-rate-limit-metric.test.mjs
 
   native:
     runs-on: ubuntu-24.04
