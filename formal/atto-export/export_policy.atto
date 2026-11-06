@@ -1,0 +1,21 @@
+// AttoLang source-level OTel exporter admission oracles.
+// No real transport or guest compiler execution is claimed.
+define module otel_export_policy as
+  pub fnc queue_admitted(bool redacted, int buffered_batches,
+                         int capacity): bool {
+    return redacted && capacity > 0 && buffered_batches >= 0 &&
+      buffered_batches < capacity;
+  }
+
+  pub fnc acknowledge(bool delivered, bool receipt_valid): bool {
+    return delivered && receipt_valid;
+  }
+
+  pub fnc self_check(): bool {
+    return queue_admitted(true,0,1) &&
+      !queue_admitted(false,0,1) &&
+      !queue_admitted(true,1,1) &&
+      acknowledge(true,true) &&
+      !acknowledge(false,true);
+  }
+end
